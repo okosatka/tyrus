@@ -55,6 +55,7 @@
     <name>Tyrus Samples</name>
 
     <modules>
+        <module>alarm</module>
         <module>auction</module>
         <module>cdi</module>
         <module>chat</module>
