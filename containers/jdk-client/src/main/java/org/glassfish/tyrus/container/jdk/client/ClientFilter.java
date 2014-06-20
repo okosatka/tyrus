@@ -51,6 +51,7 @@ import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
 
+import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.CloseReasons;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.spi.ClientEngine;
@@ -81,6 +82,8 @@ class ClientFilter extends Filter {
     private volatile boolean connectedToProxy = false;
     private volatile UpgradeRequest upgradeRequest;
 
+    private NextUpgradeRequestListener nextUpgradeRequestListener;
+
     /**
      * Constructor.
      *
@@ -96,13 +99,31 @@ class ClientFilter extends Filter {
 
     @Override
     public void onConnect(final Filter downstreamFilter) {
-        upgradeRequest = engine.createUpgradeRequest(uri, new TimeoutHandler() {
+        upgradeRequest = nextUpgradeRequestListener.getNextUpgradeRequest();
+        if (upgradeRequest == null) {
+            upgradeRequest = engine.createUpgradeRequest(uri, new TimeoutHandler() {
+                @Override
+                public void handleTimeout() {
+                    downstreamFilter.close();
+                }
+            });
+        }
+
+        final JdkUpgradeRequest handshakeUpgradeRequest = getJdkUpgradeRequest(downstreamFilter);
+
+        sendRequest(downstreamFilter, handshakeUpgradeRequest);
+    }
+
+    private void sendRequest(final Filter downstreamFilter, JdkUpgradeRequest handshakeUpgradeRequest) {
+        downstreamFilter.write(HttpRequestBuilder.build(handshakeUpgradeRequest), new CompletionHandler<ByteBuffer>() {
             @Override
-            public void handleTimeout() {
-                downstreamFilter.close();
+            public void failed(Throwable throwable) {
+                closeConnection(downstreamFilter);
             }
         });
+    }
 
+    private JdkUpgradeRequest getJdkUpgradeRequest(Filter downstreamFilter) {
         final JdkUpgradeRequest handshakeUpgradeRequest;
         if (!proxy) {
             downstreamFilter.startSsl();
@@ -110,13 +131,7 @@ class ClientFilter extends Filter {
         } else {
             handshakeUpgradeRequest = createProxyUpgradeRequest(upgradeRequest);
         }
-
-        downstreamFilter.write(HttpRequestBuilder.build(handshakeUpgradeRequest), new CompletionHandler<ByteBuffer>() {
-            @Override
-            public void failed(Throwable throwable) {
-                closeConnection(downstreamFilter);
-            }
-        });
+        return handshakeUpgradeRequest;
     }
 
     @Override
@@ -142,12 +157,7 @@ class ClientFilter extends Filter {
             }
             connectedToProxy = true;
             downstreamFilter.startSsl();
-            downstreamFilter.write(HttpRequestBuilder.build(createHandshakeUpgradeRequest(upgradeRequest)), new CompletionHandler<ByteBuffer>() {
-                @Override
-                public void failed(Throwable throwable) {
-                    closeConnection(downstreamFilter);
-                }
-            });
+            sendRequest(downstreamFilter, createHandshakeUpgradeRequest(upgradeRequest));
             return;
         }
 
@@ -164,8 +174,42 @@ class ClientFilter extends Filter {
                 closeConnection(downstreamFilter);
                 return;
             }
-            responseParser.destroy();
-            handleUpgradeResponse(downstreamFilter, tyrusUpgradeResponse);
+
+            responseParser.clear();
+
+            JdkWriter writer = new JdkWriter(downstreamFilter);
+
+            ClientEngine.UpgradeInfo upgradeInfo = engine.processResponse(
+                    tyrusUpgradeResponse,
+                    writer,
+                    new CloseListener() {
+
+                        @Override
+                        public void close(CloseReason reason) {
+                            closeConnection(downstreamFilter);
+                        }
+                    }
+            );
+
+            switch (upgradeInfo.getUpgradeStatus()) {
+                case NEXT_UPGRADE_REQUEST_REQUIRED:
+                    upgradeRequest = upgradeInfo.getUpgradeRequest();
+                    closeConnection(downstreamFilter);
+                    if (proxy) {
+                        connectedToProxy = false;
+                    }
+                    nextUpgradeRequestListener.nextUpgradeRequest(upgradeRequest);
+                    return;
+                case SUCCESS:
+                    responseParser.destroy();
+                    wsConnection = upgradeInfo.createConnection();
+                    break;
+                case UPGRADE_REQUEST_FAILED:
+                    closeConnection(downstreamFilter);
+                    return;
+                default:
+            }
+
             if (wsConnection == null) {
                 closeConnection(downstreamFilter);
                 return;
@@ -212,21 +256,6 @@ class ClientFilter extends Filter {
         public void write(ByteBuffer buffer, CompletionHandler<ByteBuffer> completionHandler) {
             downstreamFilter.write(buffer, completionHandler);
         }
-    }
-
-    private void handleUpgradeResponse(final Filter downstreamFilter, TyrusUpgradeResponse tyrusUpgradeResponse) {
-        JdkWriter writer = new JdkWriter(downstreamFilter);
-        wsConnection = engine.processResponse(
-                tyrusUpgradeResponse,
-                writer,
-                new CloseListener() {
-
-                    @Override
-                    public void close(CloseReason reason) {
-                        closeConnection(downstreamFilter);
-                    }
-                }
-        );
     }
 
     private JdkUpgradeRequest createHandshakeUpgradeRequest(final UpgradeRequest upgradeRequest) {
@@ -285,4 +314,9 @@ class ClientFilter extends Filter {
             }
         };
     }
+
+    public void setNextUpgradeRequestListener(NextUpgradeRequestListener nextUpgradeRequestListener) {
+        this.nextUpgradeRequestListener = nextUpgradeRequestListener;
+    }
+
 }

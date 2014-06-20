@@ -196,7 +196,14 @@ class TransportFilter extends Filter {
                 inputBuffer.flip();
                 TransportFilter.this.upstreamFilter.onRead(TransportFilter.this, inputBuffer);
                 inputBuffer.compact();
-                read(inputBuffer);
+                try {
+                    // the only way to find out whether socket is still opened
+                    if (TransportFilter.this.socketChannel.getRemoteAddress() != null) {
+                        read(inputBuffer);
+                    }
+                } catch (IOException ioe) {
+                    // Nothing to log - getRemoteAddress can throw the exception.
+                }
             }
 
             @Override

@@ -52,7 +52,7 @@ public interface ClientEngine {
      * Create upgrade request and register {@link TimeoutHandler}.
      *
      * @param uri            URI of remote endpoint.
-     * @param timeoutHandler handshake timeout handler. {@link org.glassfish.tyrus.spi.ClientEngine.TimeoutHandler#handleTimeout()}
+     * @param timeoutHandler handshake timeout handler. {@link ClientEngine.TimeoutHandler#handleTimeout()}
      *                       is invoked if {@link #processResponse(UpgradeResponse, Writer, org.glassfish.tyrus.spi.Connection.CloseListener)}
      *                       is not called within handshake timeout.
      * @return request to be send on the wire.
@@ -60,16 +60,14 @@ public interface ClientEngine {
     public UpgradeRequest createUpgradeRequest(URI uri, TimeoutHandler timeoutHandler);
 
     /**
-     * Process handshake response.
+     * Try to process handshake and send {@link ClientEngine.UpgradeInfo} with handshake {@link ClientEngine.UpgradeStatus}
      *
      * @param upgradeResponse response to be processed.
      * @param writer          used for sending dataframes from client endpoint.
      * @param closeListener   will be called when connection is closed, will be set as listener of returned {@link Connection}.
-     * @return Tyrus connection representation. Handles all incoming data.
-     * @see org.glassfish.tyrus.spi.Connection#getReadHandler()
-     * @see ReadHandler
+     * @return info with upgrade status.
      */
-    public Connection processResponse(UpgradeResponse upgradeResponse, final Writer writer, final Connection.CloseListener closeListener);
+    public UpgradeInfo processResponse(UpgradeResponse upgradeResponse, final Writer writer, final Connection.CloseListener closeListener);
 
     /**
      * Indicates to container that handshake timeout was reached.
@@ -80,4 +78,65 @@ public interface ClientEngine {
          */
         public void handleTimeout();
     }
+
+    /**
+     * Upgrade process status holder.
+     * <p/>
+     * Provides information about handshake/upgrade process, current {@link org.glassfish.tyrus.spi.UpgradeRequest}
+     * which should be send (when {@link #getUpgradeStatus()} returns
+     * {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus#NEXT_UPGRADE_REQUEST_REQUIRED},
+     * eventually creates connection when {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus}
+     * is {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus#SUCCESS}.
+     */
+    interface UpgradeInfo {
+
+        /**
+         * {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus} getter.
+         * @return current {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus}.
+         */
+        UpgradeStatus getUpgradeStatus();
+
+        /**
+         * Get current {@link org.glassfish.tyrus.spi.UpgradeRequest} when {@link #getUpgradeStatus()} returns {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus#NEXT_UPGRADE_REQUEST_REQUIRED}
+         *
+         * @return current {@link org.glassfish.tyrus.spi.UpgradeRequest}.
+         */
+        UpgradeRequest getUpgradeRequest();
+
+        /**
+         * If {@link #getUpgradeStatus()} returns {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeStatus#SUCCESS},
+         * should create {@link org.glassfish.tyrus.spi.Connection}.
+         *
+         * @return websocket connection.
+         */
+        Connection createConnection();
+
+    }
+
+    /**
+     * Status of upgrade process.
+     * Returned by {@link #processResponse(UpgradeResponse, Writer, org.glassfish.tyrus.spi.Connection.CloseListener)}.
+     */
+    enum UpgradeStatus {
+
+        /**
+         * If handshake process requires another {@code upgrade request}. New instance of
+         * {@link org.glassfish.tyrus.spi.UpgradeRequest} could be obtain by calling
+         * {@link org.glassfish.tyrus.spi.ClientEngine.UpgradeInfo#getUpgradeRequest()}.
+         */
+        NEXT_UPGRADE_REQUEST_REQUIRED,
+
+        /**
+         * When handshake failed by any reason.
+         */
+        UPGRADE_REQUEST_FAILED,
+
+        /**
+         * Handshake has gone through. Client can create connection ({@link ClientEngine.UpgradeInfo#createConnection()}).
+         *
+         * @see org.glassfish.tyrus.spi.Connection
+         */
+        SUCCESS,
+    }
+
 }

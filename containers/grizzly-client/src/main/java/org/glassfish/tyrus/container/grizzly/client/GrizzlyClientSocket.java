@@ -61,9 +61,11 @@ import javax.websocket.DeploymentException;
 
 import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
+import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.spi.ClientEngine;
+import org.glassfish.tyrus.spi.UpgradeRequest;
 
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.GrizzlyFuture;
@@ -169,6 +171,7 @@ public class GrizzlyClientSocket {
 
     private static volatile TCPNIOTransport transport;
     private static final Object TRANSPORT_LOCK = new Object();
+    private final NextUpgradeRequestListener upgradeRequestListener;
 
     /**
      * Create new instance.
@@ -221,6 +224,22 @@ public class GrizzlyClientSocket {
         }
 
         socketAddress = processProxy(properties);
+
+        upgradeRequestListener = new NextUpgradeRequestListener() {
+
+            @Override
+            public void nextUpgradeRequest(UpgradeRequest upgradeRequest) {
+                try {
+                    setNextUpgradeRequest(upgradeRequest);
+                    GrizzlyClientSocket.this.connect();
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Connect to server endpoint failed.", e);
+                } catch (DeploymentException e) {
+                    LOGGER.log(Level.SEVERE, "Connect to server endpoint failed.", e);
+                }
+            }
+        };
+
     }
 
     /**
@@ -267,16 +286,13 @@ public class GrizzlyClientSocket {
                 }
             };
 
+            final SocketAddress connectAddress;
             switch (proxy.type()) {
                 case DIRECT:
-                    connectorHandler.setProcessor(createFilterChain(engine, null, clientSSLEngineConfigurator, false, uri, timeoutHandler, sharedTransport, sharedTransportTimeout, proxyHeaders));
-
+                    connectAddress = socketAddress;
                     LOGGER.log(Level.CONFIG, String.format("Connecting to '%s' (no proxy).", uri));
-                    connectionGrizzlyFuture = connectorHandler.connect(socketAddress);
                     break;
                 default:
-                    connectorHandler.setProcessor(createFilterChain(engine, null, clientSSLEngineConfigurator, true, uri, timeoutHandler, sharedTransport, sharedTransportTimeout, proxyHeaders));
-
                     LOGGER.log(Level.CONFIG, String.format("Connecting to '%s' via proxy '%s'.", uri, proxy));
 
                     // default ProxySelector always returns proxies with unresolved addresses.
@@ -288,10 +304,13 @@ public class GrizzlyClientSocket {
                             address = new InetSocketAddress(inetSocketAddress.getHostName(), inetSocketAddress.getPort());
                         }
                     }
-
-                    connectionGrizzlyFuture = connectorHandler.connect(address);
+                    connectAddress = address;
                     break;
             }
+
+            connectorHandler.setProcessor(createFilterChain(engine, null, clientSSLEngineConfigurator, !(proxy.type() == Proxy.Type.DIRECT), uri, timeoutHandler, sharedTransport, sharedTransportTimeout, proxyHeaders, upgradeRequestListener));
+
+            connectionGrizzlyFuture = connectorHandler.connect(connectAddress);
 
             try {
                 final Connection connection = connectionGrizzlyFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
@@ -528,7 +547,8 @@ public class GrizzlyClientSocket {
                                                URI uri,
                                                ClientEngine.TimeoutHandler timeoutHandler,
                                                boolean sharedTransport, Integer sharedTransportTimeout,
-                                               Map<String, String> proxyHeaders) {
+                                               Map<String, String> proxyHeaders,
+                                               NextUpgradeRequestListener nextUpgradeRequestListener) {
         FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
         Filter sslFilter = null;
 
@@ -548,8 +568,9 @@ public class GrizzlyClientSocket {
         final HttpCodecFilter httpCodecFilter = new HttpCodecFilter();
         clientFilterChainBuilder.add(httpCodecFilter);
 
+
         clientFilterChainBuilder.add(new GrizzlyClientFilter(engine, proxy,
-                sslFilter, httpCodecFilter, uri, timeoutHandler, sharedTransport, proxyHeaders));
+                sslFilter, httpCodecFilter, uri, timeoutHandler, sharedTransport, proxyHeaders, nextUpgradeRequestListener));
 
         return clientFilterChainBuilder.build();
     }

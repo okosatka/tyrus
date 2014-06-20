@@ -50,6 +50,7 @@ import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
 
+import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.CloseReasons;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.core.Utils;
@@ -109,6 +110,7 @@ class GrizzlyClientFilter extends BaseFilter {
     private final ClientEngine.TimeoutHandler timeoutHandler;
     private final boolean sharedTransport;
     private final Map<String, String> proxyHeaders;
+    private final NextUpgradeRequestListener nextUpgradeRequestListener;
 
     // ------------------------------------------------------------ Constructors
 
@@ -121,7 +123,8 @@ class GrizzlyClientFilter extends BaseFilter {
     /* package */ GrizzlyClientFilter(ClientEngine engine, boolean proxy,
                                       Filter sslFilter, HttpCodecFilter httpCodecFilter,
                                       URI uri, ClientEngine.TimeoutHandler timeoutHandler, boolean sharedTransport,
-                                      Map<String, String> proxyHeaders) {
+                                      Map<String, String> proxyHeaders,
+                                      NextUpgradeRequestListener nextUpgradeRequestListener) {
         this.engine = engine;
         this.proxy = proxy;
         this.sslFilter = sslFilter;
@@ -130,6 +133,7 @@ class GrizzlyClientFilter extends BaseFilter {
         this.timeoutHandler = timeoutHandler;
         this.sharedTransport = sharedTransport;
         this.proxyHeaders = proxyHeaders;
+        this.nextUpgradeRequestListener = nextUpgradeRequestListener;
     }
 
     // ----------------------------------------------------- Methods from Filter
@@ -146,8 +150,15 @@ class GrizzlyClientFilter extends BaseFilter {
     public NextAction handleConnect(final FilterChainContext ctx) {
         LOGGER.log(Level.FINEST, "handleConnect");
 
-        final UpgradeRequest upgradeRequest = engine.createUpgradeRequest(uri, timeoutHandler);
+        UpgradeRequest upgradeRequest = nextUpgradeRequestListener.getNextUpgradeRequest();
+        if (upgradeRequest == null) {
+            upgradeRequest = engine.createUpgradeRequest(uri, timeoutHandler);
+        }
 
+        return sendRequest(ctx, upgradeRequest);
+    }
+
+    private NextAction sendRequest(FilterChainContext ctx, UpgradeRequest upgradeRequest) {
         HttpRequestPacket.Builder builder = HttpRequestPacket.builder();
 
         if (proxy) {
@@ -280,18 +291,6 @@ class GrizzlyClientFilter extends BaseFilter {
             return ctx.getInvokeAction();
         }
 
-        final String ATTR_NAME = "org.glassfish.tyrus.container.grizzly.WebSocketFilter.HANDSHAKE_PROCESSED";
-
-        final AttributeHolder attributeHolder = ctx.getAttributes();
-        if (attributeHolder != null) {
-            final Object attribute = attributeHolder.getAttribute(ATTR_NAME);
-            if (attribute != null) {
-                // handshake was already performed on this context.
-                return ctx.getInvokeAction();
-            } else {
-                attributeHolder.setAttribute(ATTR_NAME, true);
-            }
-        }
         // Handle handshake
         return handleHandshake(ctx, message);
     }
@@ -323,7 +322,7 @@ class GrizzlyClientFilter extends BaseFilter {
             }
         };
 
-        final org.glassfish.tyrus.spi.Connection tyrusConnection = engine.processResponse(
+        ClientEngine.UpgradeInfo upgradeInfo = engine.processResponse(
                 getUpgradeResponse((HttpResponsePacket) content.getHttpHeader()),
                 grizzlyWriter,
                 new org.glassfish.tyrus.spi.Connection.CloseListener() {
@@ -336,12 +335,44 @@ class GrizzlyClientFilter extends BaseFilter {
                 }
         );
 
-        if (tyrusConnection == null) {
-            return ctx.getStopAction();
+
+        org.glassfish.tyrus.spi.Connection tyrusConnection = null;
+
+        switch (upgradeInfo.getUpgradeStatus()) {
+            case UPGRADE_REQUEST_FAILED:
+                return ctx.getStopAction();
+            case NEXT_UPGRADE_REQUEST_REQUIRED:
+                UpgradeRequest upgradeRequest = upgradeInfo.getUpgradeRequest();
+                try {
+                    handleClose(ctx);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                nextUpgradeRequestListener.nextUpgradeRequest(upgradeRequest);
+                return ctx.getInvokeAction();
+            case SUCCESS:
+                tyrusConnection = upgradeInfo.createConnection();
+                break;
+            default:
+                return ctx.getStopAction();
         }
 
         TYRUS_CONNECTION.set(ctx.getConnection(), tyrusConnection);
         TASK_PROCESSOR.set(ctx.getConnection(), new TaskProcessor());
+
+        final String ATTR_NAME = "org.glassfish.tyrus.container.grizzly.WebSocketFilter.HANDSHAKE_PROCESSED";
+
+        final AttributeHolder attributeHolder = ctx.getAttributes();
+        if (attributeHolder != null) {
+            final Object attribute = attributeHolder.getAttribute(ATTR_NAME);
+            if (attribute != null) {
+                // handshake was already performed on this context.
+                return ctx.getInvokeAction();
+            } else {
+                attributeHolder.setAttribute(ATTR_NAME, true);
+            }
+        }
+
 
         if (content.getContent().hasRemaining()) {
             return ctx.getRerunFilterAction();

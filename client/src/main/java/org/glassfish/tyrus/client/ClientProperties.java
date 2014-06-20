@@ -146,4 +146,31 @@ public final class ClientProperties {
      * @see #SHARED_CONTAINER
      */
     public static final String SHARED_CONTAINER_IDLE_TIMEOUT = "org.glassfish.tyrus.client.sharedContainerIdleTimeout";
+
+    /**
+     * Username for endpoint access authentication ({@code String} value).
+     * <p/>
+     * Tyrus offers a transparent mechanism to authenticate client with Basic access authentication. When server
+     * endpoint {@link java.net.URI} requires authentication, then just provide {@code username} and {@code password}
+     * ({@link #HTTP_AUTHENTICATION_PASSWORD}) by setting these two properties.
+     * HTTP connection will be authenticated and upgraded transparently.
+     *
+     * @see #HTTP_AUTHENTICATION_PASSWORD
+     * @see ClientManager#getProperties()
+     */
+    public static final String HTTP_AUTHENTICATION_USERNAME = "org.glassfish.tyrus.client.http.auth.username";
+
+    /**
+     * Password for endpoint access authentication ({@code String or byte[]} value).
+     *
+     * Tyrus offers a transparent mechanism to authenticate client with Basic access authentication. When server
+     * endpoint {@link java.net.URI} requires authentication, then just provide {@code username}
+     * ({@link #HTTP_AUTHENTICATION_USERNAME}) and {@code password} by setting these two properties.
+     * HTTP connection will be authenticated and upgraded transparently.
+     *
+     * @see #HTTP_AUTHENTICATION_USERNAME
+     * @see ClientManager#getProperties()
+     */
+    public static final String HTTP_AUTHENTICATION_PASSWORD = "org.glassfish.tyrus.client.http.auth.password";
+
 }

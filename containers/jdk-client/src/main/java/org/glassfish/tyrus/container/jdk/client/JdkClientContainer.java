@@ -62,12 +62,15 @@ import javax.websocket.DeploymentException;
 
 import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
+import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.client.SslContextConfigurator;
 import org.glassfish.tyrus.client.SslEngineConfigurator;
+import org.glassfish.tyrus.client.authentication.AuthenticationException;
 import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.spi.ClientContainer;
 import org.glassfish.tyrus.spi.ClientEngine;
+import org.glassfish.tyrus.spi.UpgradeRequest;
 
 /**
  * {@link org.glassfish.tyrus.spi.ClientContainer} implementation based on Java 7 NIO API.
@@ -83,69 +86,110 @@ public class JdkClientContainer implements ClientContainer {
     private final List<Proxy> proxies = new ArrayList<>();
 
     @Override
-    public void openClientSocket(String url, ClientEndpointConfig cec, Map<String, Object> properties, ClientEngine clientEngine) throws DeploymentException, IOException {
-        URI uri;
+    public void openClientSocket(final String url, final ClientEndpointConfig cec, final Map<String, Object> properties, final ClientEngine clientEngine) throws DeploymentException, IOException {
+        final URI uri;
         try {
             uri = new URI(url);
         } catch (URISyntaxException e) {
             throw new DeploymentException("Invalid URI.", e);
         }
 
-        TransportFilter transportFilter;
+        final TransportFilter transportFilter;
 
-        final ClientFilter clientFilter = new ClientFilter(clientEngine, uri, getProxyHeaders(properties));
-        final TaskQueueFilter writeQueue = new TaskQueueFilter(clientFilter);
-        if (uri.getScheme().equalsIgnoreCase("wss")) {
-            Object sslEngineConfiguratorObject = properties.get(ClientProperties.SSL_ENGINE_CONFIGURATOR);
-
-            SslFilter sslFilter = null;
-
-            if (sslEngineConfiguratorObject != null) {
-                // property is set, we need to figure out whether new or deprecated one is used and act accordingly.
-                if (sslEngineConfiguratorObject instanceof SslEngineConfigurator) {
-                    sslFilter = new SslFilter(writeQueue, (SslEngineConfigurator) sslEngineConfiguratorObject);
-                } else if (sslEngineConfiguratorObject instanceof org.glassfish.tyrus.container.jdk.client.SslEngineConfigurator) {
-                    sslFilter = new SslFilter(writeQueue, (org.glassfish.tyrus.container.jdk.client.SslEngineConfigurator) sslEngineConfiguratorObject);
-                } else {
-                    LOGGER.log(Level.WARNING, "Invalid '" + ClientProperties.SSL_ENGINE_CONFIGURATOR + "' property value: " + sslEngineConfiguratorObject +
-                            ". Using system defaults.");
-                }
-            }
-
-            // if we are trying to access "wss" scheme and we don't have sslEngineConfigurator instance
-            // we should try to create ssl connection using JVM properties.
-            if (sslFilter == null) {
-                SslContextConfigurator defaultConfig = new SslContextConfigurator();
-                defaultConfig.retrieve(System.getProperties());
-
-                String wlsSslTrustStore = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_TRUSTSTORE_PROPERTY);
-                String wlsSslTrustStorePassword = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_TRUSTSTORE_PWD_PROPERTY);
-
-                if (wlsSslTrustStore != null) {
-                    defaultConfig.setTrustStoreFile(wlsSslTrustStore);
-
-                    if (wlsSslTrustStorePassword != null) {
-                        defaultConfig.setTrustStorePassword(wlsSslTrustStorePassword);
-                    }
-                }
-
-                // client mode = true, needClientAuth = false, wantClientAuth = false
-                SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(defaultConfig, true, false, false);
-                String wlsSslProtocols = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_PROTOCOLS_PROPERTY);
-                if (wlsSslProtocols != null) {
-                    sslEngineConfigurator.setEnabledProtocols(wlsSslProtocols.split(","));
-                }
-                sslFilter = new SslFilter(writeQueue, sslEngineConfigurator);
-            }
-
-            // sslFilter is never null at this point.
-            transportFilter = new TransportFilter(sslFilter, SSL_INPUT_BUFFER_SIZE);
+        final ClientFilter clientFilter = createClientFilter(properties, clientEngine, uri);
+        final TaskQueueFilter writeQueue = createTaskQueueFilter(clientFilter);
+        final boolean wss = uri.getScheme().equalsIgnoreCase("wss");
+        if (wss) {
+            SslFilter sslFilter = createSslFilter(cec, properties, writeQueue);
+            transportFilter = createTransportFilter(sslFilter, SSL_INPUT_BUFFER_SIZE);
         } else {
-            transportFilter = new TransportFilter(writeQueue, INPUT_BUFFER_SIZE);
+            transportFilter = createTransportFilter(writeQueue, INPUT_BUFFER_SIZE);
         }
 
         processProxy(properties, uri);
+
+        final NextUpgradeRequestListener nextUpgradeRequestListener = new NextUpgradeRequestListener() {
+
+            @Override
+            public void nextUpgradeRequest(UpgradeRequest upgradeRequest) {
+                try {
+                    TransportFilter transportFilter;
+                    if (wss) {
+                        SslFilter sslFilter = createSslFilter(cec, properties, writeQueue);
+                        transportFilter = createTransportFilter(sslFilter, SSL_INPUT_BUFFER_SIZE);
+                    } else {
+                        transportFilter = createTransportFilter(writeQueue, INPUT_BUFFER_SIZE);
+                    }
+                    ClientFilter clientFilter = createClientFilter(properties, clientEngine, uri);
+                    setNextUpgradeRequest(upgradeRequest);
+                    connect(clientFilter, transportFilter, uri);
+                } catch (DeploymentException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        clientFilter.setNextUpgradeRequestListener(nextUpgradeRequestListener);
+
         connect(clientFilter, transportFilter, uri);
+    }
+
+    private SslFilter createSslFilter(ClientEndpointConfig cec, Map<String, Object> properties, TaskQueueFilter writeQueue) {
+        Object sslEngineConfiguratorObject = properties.get(ClientProperties.SSL_ENGINE_CONFIGURATOR);
+
+        SslFilter sslFilter = null;
+
+        if (sslEngineConfiguratorObject != null) {
+            // property is set, we need to figure out whether new or deprecated one is used and act accordingly.
+            if (sslEngineConfiguratorObject instanceof SslEngineConfigurator) {
+                sslFilter = new SslFilter(writeQueue, (SslEngineConfigurator) sslEngineConfiguratorObject);
+            } else if (sslEngineConfiguratorObject instanceof org.glassfish.tyrus.container.jdk.client.SslEngineConfigurator) {
+                sslFilter = new SslFilter(writeQueue, (org.glassfish.tyrus.container.jdk.client.SslEngineConfigurator) sslEngineConfiguratorObject);
+            } else {
+                LOGGER.log(Level.WARNING, "Invalid '" + ClientProperties.SSL_ENGINE_CONFIGURATOR + "' property value: " + sslEngineConfiguratorObject +
+                        ". Using system defaults.");
+            }
+        }
+
+        // if we are trying to access "wss" scheme and we don't have sslEngineConfigurator instance
+        // we should try to create ssl connection using JVM properties.
+        if (sslFilter == null) {
+            SslContextConfigurator defaultConfig = new SslContextConfigurator();
+            defaultConfig.retrieve(System.getProperties());
+
+            String wlsSslTrustStore = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_TRUSTSTORE_PROPERTY);
+            String wlsSslTrustStorePassword = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_TRUSTSTORE_PWD_PROPERTY);
+
+            if (wlsSslTrustStore != null) {
+                defaultConfig.setTrustStoreFile(wlsSslTrustStore);
+
+                if (wlsSslTrustStorePassword != null) {
+                    defaultConfig.setTrustStorePassword(wlsSslTrustStorePassword);
+                }
+            }
+
+            // client mode = true, needClientAuth = false, wantClientAuth = false
+            SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(defaultConfig, true, false, false);
+            String wlsSslProtocols = (String) cec.getUserProperties().get(ClientManager.WLS_SSL_PROTOCOLS_PROPERTY);
+            if (wlsSslProtocols != null) {
+                sslEngineConfigurator.setEnabledProtocols(wlsSslProtocols.split(","));
+            }
+            sslFilter = new SslFilter(writeQueue, sslEngineConfigurator);
+        }
+        return sslFilter;
+    }
+
+    private TransportFilter createTransportFilter(Filter filter, int sslInputBufferSize) {
+        return new TransportFilter(filter, sslInputBufferSize);
+    }
+
+    private TaskQueueFilter createTaskQueueFilter(ClientFilter clientFilter) {
+        return new TaskQueueFilter(clientFilter);
+    }
+
+    private ClientFilter createClientFilter(Map<String, Object> properties, ClientEngine clientEngine, URI uri) throws DeploymentException {
+        return new ClientFilter(clientEngine, uri, getProxyHeaders(properties));
     }
 
     private SocketAddress getServerAddress(URI uri) {
@@ -167,7 +211,11 @@ public class JdkClientContainer implements ClientContainer {
             // Proxy.Type.DIRECT is always present and is always last.
             if (proxy.type() == Proxy.Type.DIRECT) {
                 clientFilter.setProxy(false);
-                transportFilter.connect(getServerAddress(uri), null);
+                try {
+                    transportFilter.connect(getServerAddress(uri), null);
+                } catch (AuthenticationException e) {
+                    transportFilter.connect(getServerAddress(uri), null);
+                }
                 return;
             }
             clientFilter.setProxy(true);
@@ -331,4 +379,5 @@ public class JdkClientContainer implements ClientContainer {
         }
         return proxyHeaders;
     }
+
 }

@@ -62,7 +62,8 @@ import org.glassfish.tyrus.spi.UpgradeResponse;
  */
 public final class Handshake {
 
-    private static final int RESPONSE_CODE_VALUE = 101;
+    public static final int RESPONSE_CODE_SWITCHING_PROTOCOLS = 101;
+
     private static final String VERSION = "13";
 
     private boolean secure;
@@ -153,7 +154,6 @@ public final class Handshake {
         Map<String, List<String>> requestHeaders = request.getHeaders();
 
         requestHeaders.put(UpgradeRequest.HOST, Collections.singletonList(host));
-        requestHeaders.put(UpgradeRequest.HOST, Collections.singletonList(host));
         requestHeaders.put(UpgradeRequest.CONNECTION, Collections.singletonList(UpgradeRequest.UPGRADE));
         requestHeaders.put(UpgradeRequest.UPGRADE, Collections.singletonList(UpgradeRequest.WEBSOCKET));
 
@@ -190,8 +190,9 @@ public final class Handshake {
      * @throws org.glassfish.tyrus.core.HandshakeException when Http Status of received response is not 101 - Switching protocols.
      */
     public void validateServerResponse(UpgradeResponse response) {
-        if (RESPONSE_CODE_VALUE != response.getStatus()) {
-            throw new HandshakeException(response.getStatus(), LocalizationMessages.INVALID_RESPONSE_CODE(RESPONSE_CODE_VALUE, response.getStatus()));
+
+        if (RESPONSE_CODE_SWITCHING_PROTOCOLS != response.getStatus()) {
+            throw new HandshakeException(response.getStatus(), LocalizationMessages.INVALID_RESPONSE_CODE(RESPONSE_CODE_SWITCHING_PROTOCOLS, response.getStatus()));
         }
 
         checkForHeader(response.getFirstHeaderValue(UpgradeRequest.UPGRADE), UpgradeRequest.UPGRADE, UpgradeRequest.WEBSOCKET);
@@ -253,6 +254,7 @@ public final class Handshake {
         }
         handshake.secKey = SecKey.generateServerKey(new SecKey(request.getHeader(UpgradeRequest.SEC_WEBSOCKET_KEY)));
 
+        System.out.println("Handshake#createServerHandshake:" + handshake);
         return handshake;
     }
 
