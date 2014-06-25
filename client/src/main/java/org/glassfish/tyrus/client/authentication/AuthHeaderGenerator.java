@@ -41,7 +41,6 @@
 
 package org.glassfish.tyrus.client.authentication;
 
-import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
@@ -49,19 +48,21 @@ import org.glassfish.tyrus.spi.UpgradeResponse;
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
-public abstract class AuthHeaderGenerator {
+abstract class AuthHeaderGenerator {
 
-    protected final HttpAuthentication.Credentials credentials;
-
-    AuthHeaderGenerator(HttpAuthentication.Credentials credentials) {
-        this.credentials = credentials;
-    }
+    /**
+     * Implementation decides if it fits the task.
+     *
+     * @param response handshake response with HTTP headers ({@link org.glassfish.tyrus.spi.UpgradeResponse} ).
+     * @return {@code true} if implementation fits.
+     */
+    abstract boolean isSuitable(UpgradeResponse response);
 
     /**
      * Construct {@code Authorization} header.
      *
      * @return authorization header value.
      */
-    abstract String getAuthorizationHeader();
+    abstract String getAuthorizationHeader(Authenticator.Credentials credentials);
 
 }

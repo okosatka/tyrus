@@ -47,7 +47,7 @@ import org.glassfish.tyrus.core.CloseReasons;
 import org.glassfish.tyrus.core.WebSocketException;
 
 /**
- * An exception originates during an authentication process.
+ * An exception is thrown when authentication process failed.
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
@@ -60,17 +60,6 @@ public class AuthenticationException extends WebSocketException {
      */
     public AuthenticationException(String message) {
         super(message);
-    }
-
-    /**
-     * Create new {@link AuthenticationException}.
-     *
-     * @param message exception message.
-     * @param e exception that cause this exception.
-     */
-    public AuthenticationException(String message, Exception e) {
-        super(message);
-        this.initCause(e);
     }
 
     @Override

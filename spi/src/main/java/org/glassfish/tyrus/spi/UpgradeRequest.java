@@ -60,6 +60,7 @@ public abstract class UpgradeRequest implements HandshakeRequest {
     public static final String SEC_WS_ORIGIN_HEADER = "Sec-WebSocket-Origin";
     public static final String ORIGIN_HEADER = "Origin";
     public static final String CLUSTER_CONNECTION_ID_HEADER = "tyrus-cluster-connection-id";
+    public static final String AUTHORIZATION = "Authorization";
 
     /**
      * Returns the value of the specified request header name. If there are

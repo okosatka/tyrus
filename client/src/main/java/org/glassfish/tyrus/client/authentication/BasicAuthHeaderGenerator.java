@@ -39,32 +39,32 @@
  */
 package org.glassfish.tyrus.client.authentication;
 
+import java.util.List;
+
 import org.glassfish.tyrus.core.Base64Utils;
+import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
- * Implementation of Basic Http Authentication method.
+ * Implementation of HTTP Basic authentication scheme.
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
 final class BasicAuthHeaderGenerator extends AuthHeaderGenerator {
 
-    /**
-     * Creates a new instance of basic authenticator.
-     *
-     * @param credentials Credentials. Can be {@code null} if no default credentials should be
-     *                    used.
-     */
-    BasicAuthHeaderGenerator(HttpAuthentication.Credentials credentials) {
-        super(credentials);
+    @Override
+    protected boolean isSuitable(final UpgradeResponse response) {
+        List<String> authList = response.getHeaders().get(UpgradeResponse.WWW_AUTHENTICATE);
+        if (authList != null) {
+            String authenticateHeader = authList.get(0);
+            if (authenticateHeader != null && authenticateHeader.toUpperCase().startsWith("BASIC")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    String getAuthorizationHeader() {
-        return calculateAuthorizationHeader(credentials);
-    }
-
-
-    private String calculateAuthorizationHeader(HttpAuthentication.Credentials credentials) {
+    String getAuthorizationHeader(final Authenticator.Credentials credentials) {
         String username = credentials.getUsername();
         byte[] password = credentials.getPassword();
         if (username == null) {
@@ -75,7 +75,7 @@ final class BasicAuthHeaderGenerator extends AuthHeaderGenerator {
             password = new byte[0];
         }
 
-        final byte[] prefix = (username + ":").getBytes(HttpAuthentication.CHARACTER_SET);
+        final byte[] prefix = (username + ":").getBytes(Authenticator.CHARACTER_SET);
         final byte[] usernamePassword = new byte[prefix.length + password.length];
 
         System.arraycopy(prefix, 0, usernamePassword, 0, prefix.length);
@@ -83,5 +83,6 @@ final class BasicAuthHeaderGenerator extends AuthHeaderGenerator {
 
         return "Basic " + Base64Utils.encodeToString(usernamePassword, false);
     }
+
 
 }

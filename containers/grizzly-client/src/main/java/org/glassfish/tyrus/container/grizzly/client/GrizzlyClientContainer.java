@@ -98,6 +98,6 @@ public class GrizzlyClientContainer implements ClientContainer {
             throw new DeploymentException("Invalid URI.", e);
         }
 
-        new GrizzlyClientSocket(uri, CLIENT_SOCKET_TIMEOUT, clientEngine, properties).connect();
+        new GrizzlyClientSocket(uri, CLIENT_SOCKET_TIMEOUT, clientEngine, properties);
     }
 }

@@ -61,11 +61,9 @@ import javax.websocket.DeploymentException;
 
 import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
-import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.core.Utils;
 import org.glassfish.tyrus.spi.ClientEngine;
-import org.glassfish.tyrus.spi.UpgradeRequest;
 
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.GrizzlyFuture;
@@ -171,7 +169,7 @@ public class GrizzlyClientSocket {
 
     private static volatile TCPNIOTransport transport;
     private static final Object TRANSPORT_LOCK = new Object();
-    private final NextUpgradeRequestListener upgradeRequestListener;
+    private final UpgradeRequestCallback upgradeRequestCallback;
 
     /**
      * Create new instance.
@@ -225,20 +223,25 @@ public class GrizzlyClientSocket {
 
         socketAddress = processProxy(properties);
 
-        upgradeRequestListener = new NextUpgradeRequestListener() {
+        upgradeRequestCallback = new UpgradeRequestCallback() {
 
             @Override
-            public void nextUpgradeRequest(UpgradeRequest upgradeRequest) {
+            public void reconnect() throws DeploymentException {
                 try {
-                    setNextUpgradeRequest(upgradeRequest);
                     GrizzlyClientSocket.this.connect();
                 } catch (IOException e) {
                     LOGGER.log(Level.SEVERE, "Connect to server endpoint failed.", e);
-                } catch (DeploymentException e) {
-                    LOGGER.log(Level.SEVERE, "Connect to server endpoint failed.", e);
+                    closeTransport(transport);
+//                } catch (DeploymentException e) {
+//                    LOGGER.log(Level.SEVERE, "Connect to server endpoint failed.", e);
+//                    closeTransport(transport);
+                } finally {
+                    //closeSharedTransport();
                 }
             }
         };
+
+        upgradeRequestCallback.reconnect();
 
     }
 
@@ -308,7 +311,7 @@ public class GrizzlyClientSocket {
                     break;
             }
 
-            connectorHandler.setProcessor(createFilterChain(engine, null, clientSSLEngineConfigurator, !(proxy.type() == Proxy.Type.DIRECT), uri, timeoutHandler, sharedTransport, sharedTransportTimeout, proxyHeaders, upgradeRequestListener));
+            connectorHandler.setProcessor(createFilterChain(engine, null, clientSSLEngineConfigurator, !(proxy.type() == Proxy.Type.DIRECT), uri, timeoutHandler, sharedTransport, sharedTransportTimeout, proxyHeaders, upgradeRequestCallback));
 
             connectionGrizzlyFuture = connectorHandler.connect(connectAddress);
 
@@ -548,7 +551,7 @@ public class GrizzlyClientSocket {
                                                ClientEngine.TimeoutHandler timeoutHandler,
                                                boolean sharedTransport, Integer sharedTransportTimeout,
                                                Map<String, String> proxyHeaders,
-                                               NextUpgradeRequestListener nextUpgradeRequestListener) {
+                                               UpgradeRequestCallback nextUpgradeRequestCallback) {
         FilterChainBuilder clientFilterChainBuilder = FilterChainBuilder.stateless();
         Filter sslFilter = null;
 
@@ -570,7 +573,7 @@ public class GrizzlyClientSocket {
 
 
         clientFilterChainBuilder.add(new GrizzlyClientFilter(engine, proxy,
-                sslFilter, httpCodecFilter, uri, timeoutHandler, sharedTransport, proxyHeaders, nextUpgradeRequestListener));
+                sslFilter, httpCodecFilter, uri, timeoutHandler, sharedTransport, proxyHeaders, nextUpgradeRequestCallback));
 
         return clientFilterChainBuilder.build();
     }

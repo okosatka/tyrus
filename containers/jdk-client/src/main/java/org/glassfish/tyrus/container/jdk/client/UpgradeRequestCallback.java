@@ -39,16 +39,18 @@
  * holder.
  */
 
-package org.glassfish.tyrus.client.authentication;
+package org.glassfish.tyrus.container.jdk.client;
 
 /**
- * Description
+ * Callback to reconnect with modified {@link org.glassfish.tyrus.spi.UpgradeRequest} that can be use in another round.
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
-public class HttpHeaders {
+abstract class UpgradeRequestCallback {
 
-    public static final String AUTHORIZATION = "Authorization";
+    /**
+     * Initialize container's filter chain and reconnect client to the server.
+     */
+    abstract void reconnect();
 
-    public static final String WWW_AUTHENTICATE = "WWW-Authenticate";
 }

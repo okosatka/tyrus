@@ -1,7 +1,8 @@
 /*
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2014 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,71 +38,85 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
+
 package org.glassfish.tyrus.client.authentication;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.nio.charset.Charset;
 import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
- * Http Authentication helper.
+ * Utility class which find right authentication implementation of {@link org.glassfish.tyrus.client.authentication.AuthHeaderGenerator}.
  *
- * @author Miroslav Fuksa (miroslav.fuksa at oracle.com)
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
-public class HttpAuthentication {
-    /**
-     * Authentication type.
-     */
-    static enum Type {
-        /**
-         * Basic authentication.
-         */
-        BASIC,
-        /**
-         * Digest authentication.
-         */
-        DIGEST
-    }
-
-    private static final Logger LOGGER = Logger.getLogger(HttpAuthentication.class.getName());
+public class Authenticator {
 
     /**
      * Encoding used for authentication calculations.
      */
     static final Charset CHARACTER_SET = Charset.forName("iso-8859-1");
 
+    private final Set<Class<? extends AuthHeaderGenerator>> generators = new HashSet<Class<? extends AuthHeaderGenerator>>();
 
-
-    public static void addAuthHeader(UpgradeRequest request, UpgradeResponse response, Credentials credentials) throws IOException {
-
-        AuthHeaderGenerator authHeaderGenerator;
-
-        if (response.getStatus() == HttpURLConnection.HTTP_UNAUTHORIZED) {
-            List<String> authList = response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE);
-            if (authList != null) {
-                String authString = authList.get(0);
-                if (authString != null) {
-                    final String upperCaseAuth = authString.trim().toUpperCase();
-                    if (upperCaseAuth.startsWith("BASIC")) {
-                        authHeaderGenerator = new BasicAuthHeaderGenerator(credentials);
-                    } else {
-                        throw new AuthenticationException(LocalizationMessages.AUTHENTICATION_UNSUPPORTED_AUTH_METHOD(authString));
-                    }
-                    request.getHeaders().put(HttpHeaders.AUTHORIZATION, Collections.singletonList(authHeaderGenerator.getAuthorizationHeader()));
-                }
-            }
-        }
+    /**
+     * Register HTTP authentication header generators.
+     */
+    public Authenticator() {
+        generators.add(BasicAuthHeaderGenerator.class);
     }
 
-    public static Credentials extractCredentials(String username, Object password) {
+    /**
+     * Add {@code Authorization} header into given request.
+     * <p/>
+     * Header is constructed
+     *
+     * @param request     {@link org.glassfish.tyrus.spi.UpgradeRequest} to enrich.
+     * @param response    {@link org.glassfish.tyrus.spi.UpgradeResponse} containing {@code WWW-Authenticate} header
+     *                    with authenticate parameters.
+     * @param credentials username/password credentials.
+     * @throws AuthenticationException thrown when unsupported auth scheme is required.
+     */
+    public void addAuthHeader(UpgradeRequest request, UpgradeResponse response, Credentials credentials) throws AuthenticationException {
+        AuthHeaderGenerator generator = findGenerator(response);
+        String headerValue = generator.getAuthorizationHeader(credentials);
+        request.getHeaders().put(UpgradeRequest.AUTHORIZATION, Collections.singletonList(headerValue));
+    }
+
+    private AuthHeaderGenerator findGenerator(UpgradeResponse response) throws AuthenticationException {
+        for (Class<? extends AuthHeaderGenerator> generator : generators) {
+            AuthHeaderGenerator instance;
+            try {
+                instance = generator.newInstance();
+            } catch (InstantiationException e) {
+                throw new AuthenticationException(LocalizationMessages.AUTHENTICATION_CREATE_AUTH_HEADER_FAILED());
+            } catch (IllegalAccessException e) {
+                throw new AuthenticationException(LocalizationMessages.AUTHENTICATION_CREATE_AUTH_HEADER_FAILED());
+            }
+            if (instance.isSuitable(response)) {
+                return instance;
+            }
+        }
+        throw new AuthenticationException(LocalizationMessages.AUTHENTICATION_CREATE_AUTH_HEADER_FAILED());
+    }
+
+    /**
+     * Extract credentials into {@link org.glassfish.tyrus.client.authentication.Authenticator.Credentials}.
+     * <p/>
+     * Credentials are given to the client in container properties.
+     *
+     * @param username as a {@link java.lang.String}.
+     * @param password as a {@code byte[]} or {@link java.lang.String}.
+     * @return {@link org.glassfish.tyrus.client.authentication.Authenticator.Credentials} instance or {@code null}
+     * if given {@code username} or {@code password} is null or {@code username} is empty.
+     * @throws AuthenticationException if password are different type then {@code byte[]} or {@link java.lang.String}.
+     */
+    public static Credentials extractCredentials(String username, Object password) throws AuthenticationException {
         if (username != null && !username.equals("") && password != null) {
             byte[] pwdBytes;
             if (password instanceof byte[]) {

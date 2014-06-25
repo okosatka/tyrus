@@ -49,11 +49,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
+import javax.websocket.DeploymentException;
 
-import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.CloseReasons;
+import org.glassfish.tyrus.core.HandshakeException;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.core.Utils;
+import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.spi.ReadHandler;
 import org.glassfish.tyrus.spi.UpgradeRequest;
@@ -110,7 +112,7 @@ class GrizzlyClientFilter extends BaseFilter {
     private final ClientEngine.TimeoutHandler timeoutHandler;
     private final boolean sharedTransport;
     private final Map<String, String> proxyHeaders;
-    private final NextUpgradeRequestListener nextUpgradeRequestListener;
+    private final UpgradeRequestCallback upgradeRequestCallback;
 
     // ------------------------------------------------------------ Constructors
 
@@ -124,7 +126,7 @@ class GrizzlyClientFilter extends BaseFilter {
                                       Filter sslFilter, HttpCodecFilter httpCodecFilter,
                                       URI uri, ClientEngine.TimeoutHandler timeoutHandler, boolean sharedTransport,
                                       Map<String, String> proxyHeaders,
-                                      NextUpgradeRequestListener nextUpgradeRequestListener) {
+                                      UpgradeRequestCallback upgradeRequestCallback) {
         this.engine = engine;
         this.proxy = proxy;
         this.sslFilter = sslFilter;
@@ -133,7 +135,7 @@ class GrizzlyClientFilter extends BaseFilter {
         this.timeoutHandler = timeoutHandler;
         this.sharedTransport = sharedTransport;
         this.proxyHeaders = proxyHeaders;
-        this.nextUpgradeRequestListener = nextUpgradeRequestListener;
+        this.upgradeRequestCallback = upgradeRequestCallback;
     }
 
     // ----------------------------------------------------- Methods from Filter
@@ -150,10 +152,7 @@ class GrizzlyClientFilter extends BaseFilter {
     public NextAction handleConnect(final FilterChainContext ctx) {
         LOGGER.log(Level.FINEST, "handleConnect");
 
-        UpgradeRequest upgradeRequest = nextUpgradeRequestListener.getNextUpgradeRequest();
-        if (upgradeRequest == null) {
-            upgradeRequest = engine.createUpgradeRequest(uri, timeoutHandler);
-        }
+        final UpgradeRequest upgradeRequest = engine.createUpgradeRequest(uri, timeoutHandler);
 
         return sendRequest(ctx, upgradeRequest);
     }
@@ -261,7 +260,7 @@ class GrizzlyClientFilter extends BaseFilter {
         // proxy
         final HttpStatus httpStatus = ((HttpResponsePacket) message.getHttpHeader()).getHttpStatus();
 
-        if (httpStatus.getStatusCode() != 101) {
+        if (httpStatus.getStatusCode() != 101 && httpStatus.getStatusCode() != 401) {
             if (proxy) {
                 if (httpStatus == HttpStatus.OK_200) {
 
@@ -336,19 +335,22 @@ class GrizzlyClientFilter extends BaseFilter {
         );
 
 
-        org.glassfish.tyrus.spi.Connection tyrusConnection = null;
+        org.glassfish.tyrus.spi.Connection tyrusConnection;
 
         switch (upgradeInfo.getUpgradeStatus()) {
             case UPGRADE_REQUEST_FAILED:
                 return ctx.getStopAction();
             case NEXT_UPGRADE_REQUEST_REQUIRED:
-                UpgradeRequest upgradeRequest = upgradeInfo.getUpgradeRequest();
                 try {
                     handleClose(ctx);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.log(Level.WARNING, LocalizationMessages.IOEXCEPTION_CLOSE());
                 }
-                nextUpgradeRequestListener.nextUpgradeRequest(upgradeRequest);
+                try {
+                    upgradeRequestCallback.reconnect();
+                } catch (DeploymentException e) {
+                    throw new HandshakeException("Reconnect failed");
+                }
                 return ctx.getInvokeAction();
             case SUCCESS:
                 tyrusConnection = upgradeInfo.createConnection();

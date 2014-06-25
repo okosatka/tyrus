@@ -62,7 +62,7 @@ import org.glassfish.tyrus.spi.UpgradeResponse;
  */
 public final class Handshake {
 
-    public static final int RESPONSE_CODE_SWITCHING_PROTOCOLS = 101;
+    private static final int RESPONSE_CODE_SWITCHING_PROTOCOLS = 101;
 
     private static final String VERSION = "13";
 
@@ -254,7 +254,6 @@ public final class Handshake {
         }
         handshake.secKey = SecKey.generateServerKey(new SecKey(request.getHeader(UpgradeRequest.SEC_WEBSOCKET_KEY)));
 
-        System.out.println("Handshake#createServerHandshake:" + handshake);
         return handshake;
     }
 

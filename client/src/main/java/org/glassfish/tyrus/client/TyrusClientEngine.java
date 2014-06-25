@@ -40,7 +40,6 @@
 package org.glassfish.tyrus.client;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -57,7 +56,7 @@ import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 import javax.websocket.server.HandshakeRequest;
 
-import org.glassfish.tyrus.client.authentication.HttpAuthentication;
+import org.glassfish.tyrus.client.authentication.Authenticator;
 import org.glassfish.tyrus.core.Handshake;
 import org.glassfish.tyrus.core.ProtocolHandler;
 import org.glassfish.tyrus.core.RequestContext;
@@ -70,7 +69,6 @@ import org.glassfish.tyrus.core.WebSocketException;
 import org.glassfish.tyrus.core.extension.ExtendedExtension;
 import org.glassfish.tyrus.core.frame.CloseFrame;
 import org.glassfish.tyrus.core.frame.Frame;
-import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.spi.ClientContainer;
 import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.spi.Connection;
@@ -104,7 +102,8 @@ public class TyrusClientEngine implements ClientEngine {
     private Handshake clientHandShake = null;
     private volatile TimeoutHandler timeoutHandler = null;
     private URI uri;
-    private boolean alreadyGetUnauthorized = false;
+    private volatile UpgradeStatus upgradeStatus = UpgradeStatus.INIT;
+    private UpgradeResponse upgradeResponse;
 
 
     /**
@@ -138,49 +137,34 @@ public class TyrusClientEngine implements ClientEngine {
         clientHandShake.prepareRequest();
         config.getConfigurator().beforeRequest(clientHandShake.getRequest().getHeaders());
 
-        return clientHandShake.getRequest();
+        UpgradeRequest upgradeRequest = clientHandShake.getRequest();
+
+        if (upgradeResponse != null && upgradeResponse.getStatus() == 401) {
+            Authenticator.Credentials credentials = Authenticator.extractCredentials(
+                    Utils.getProperty(properties, ClientProperties.HTTP_AUTHENTICATION_USERNAME, String.class),
+                    Utils.getProperty(properties, ClientProperties.HTTP_AUTHENTICATION_PASSWORD, Object.class)
+            );
+            new Authenticator().addAuthHeader(upgradeRequest, upgradeResponse, credentials);
+        }
+
+        return upgradeRequest;
     }
 
     @Override
     public UpgradeInfo processResponse(final UpgradeResponse upgradeResponse, final Writer writer, final Connection.CloseListener closeListener) {
         try {
-            if (upgradeResponse.getStatus() == HttpURLConnection.HTTP_UNAUTHORIZED) {
-                if (!alreadyGetUnauthorized) {
-                    alreadyGetUnauthorized = true;
-                    return new UpgradeInfo() {
-                        @Override
-                        public UpgradeStatus getUpgradeStatus() {
-                            return UpgradeStatus.NEXT_UPGRADE_REQUEST_REQUIRED;
-                        }
+            this.upgradeResponse = upgradeResponse;
 
-                        @Override
-                        public UpgradeRequest getUpgradeRequest() {
-                            return TyrusClientEngine.this.createAuthenticationUpgradeRequest(upgradeResponse, uri, timeoutHandler);
-                        }
-
-                        @Override
-                        public Connection createConnection() {
-                            return null;
-                        }
-                    };
-                } else {
-                    // we have already sent auth request, so do not try it again and again
-                    return new UpgradeInfo() {
-                        @Override
-                        public UpgradeStatus getUpgradeStatus() {
-                            return UpgradeStatus.UPGRADE_REQUEST_FAILED;
-                        }
-
-                        @Override
-                        public UpgradeRequest getUpgradeRequest() {
-                            return null;
-                        }
-
-                        @Override
-                        public Connection createConnection() {
-                            return null;
-                        }
-                    };
+            if (upgradeResponse.getStatus() == 401) {
+                switch (upgradeStatus) {
+                    case INIT:
+                        upgradeStatus = UpgradeStatus.NEXT_UPGRADE_REQUEST_REQUIRED;
+                        return new NextUpgradeRequestRequired();
+                    case NEXT_UPGRADE_REQUEST_REQUIRED:
+                        // we have already sent auth request, so do not try it again and again
+                    default:
+                        upgradeStatus = UpgradeStatus.UPGRADE_REQUEST_FAILED;
+                        return UPGRADE_INFO_FAILED;
                 }
             }
             clientHandShake.validateServerResponse(upgradeResponse);
@@ -303,21 +287,6 @@ public class TyrusClientEngine implements ClientEngine {
         }
     }
 
-    private UpgradeRequest createAuthenticationUpgradeRequest(UpgradeResponse upgradeResponse, URI uri, TimeoutHandler timeoutHandler) {
-        UpgradeRequest upgradeRequest = createUpgradeRequest(uri, timeoutHandler);
-
-        try {
-            HttpAuthentication.Credentials credentials = HttpAuthentication.extractCredentials(
-                    (String) properties.get(ClientProperties.HTTP_AUTHENTICATION_USERNAME),
-                    properties.get(ClientProperties.HTTP_AUTHENTICATION_PASSWORD)
-            );
-            HttpAuthentication.addAuthHeader(upgradeRequest, upgradeResponse, credentials);
-        } catch (IOException e) {
-            LOGGER.log(Level.INFO, LocalizationMessages.AUTHENTICATION_CREATE_AUTH_HEADER_FAILED(), e);
-        }
-        return upgradeRequest;
-    }
-
     /**
      * Get {@link TimeoutHandler} associated with current {@link ClientEngine} instance.
      *
@@ -418,4 +387,42 @@ public class TyrusClientEngine implements ClientEngine {
             }
         }
     }
+
+    private final class NextUpgradeRequestRequired implements UpgradeInfo {
+
+        @Override
+        public UpgradeStatus getUpgradeStatus() {
+            return UpgradeStatus.NEXT_UPGRADE_REQUEST_REQUIRED;
+        }
+
+        @Override
+        public UpgradeRequest getUpgradeRequest() {
+            return TyrusClientEngine.this.createUpgradeRequest(uri, timeoutHandler);
+        }
+
+        @Override
+        public Connection createConnection() {
+            return null;
+        }
+    }
+
+    private static final UpgradeInfo UPGRADE_INFO_FAILED = new UpgradeInfo() {
+
+        @Override
+        public UpgradeStatus getUpgradeStatus() {
+            return UpgradeStatus.UPGRADE_REQUEST_FAILED;
+        }
+
+        @Override
+        public UpgradeRequest getUpgradeRequest() {
+            return null;
+        }
+
+        @Override
+        public Connection createConnection() {
+            return null;
+        }
+    };
+
+
 }

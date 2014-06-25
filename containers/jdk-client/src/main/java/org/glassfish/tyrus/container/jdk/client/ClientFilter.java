@@ -51,7 +51,6 @@ import java.util.logging.Logger;
 
 import javax.websocket.CloseReason;
 
-import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.core.CloseReasons;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.spi.ClientEngine;
@@ -82,32 +81,31 @@ class ClientFilter extends Filter {
     private volatile boolean connectedToProxy = false;
     private volatile UpgradeRequest upgradeRequest;
 
-    private NextUpgradeRequestListener nextUpgradeRequestListener;
+    private UpgradeRequestCallback upgradeRequestCallback;
 
     /**
      * Constructor.
      *
-     * @param engine       client engine instance.
-     * @param uri          URI to be used for creating {@link org.glassfish.tyrus.spi.UpgradeRequest}.
-     * @param proxyHeaders map representing headers to be added to request sent to proxy (HTTP CONNECT).
+     * @param engine                 client engine instance.
+     * @param uri                    URI to be used for creating {@link org.glassfish.tyrus.spi.UpgradeRequest}.
+     * @param proxyHeaders           map representing headers to be added to request sent to proxy (HTTP CONNECT).
+     * @param upgradeRequestCallback
      */
-    ClientFilter(ClientEngine engine, URI uri, Map<String, String> proxyHeaders) {
+    ClientFilter(ClientEngine engine, URI uri, Map<String, String> proxyHeaders, UpgradeRequestCallback upgradeRequestCallback) {
         this.engine = engine;
         this.uri = uri;
         this.proxyHeaders = proxyHeaders;
+        this.upgradeRequestCallback = upgradeRequestCallback;
     }
 
     @Override
     public void onConnect(final Filter downstreamFilter) {
-        upgradeRequest = nextUpgradeRequestListener.getNextUpgradeRequest();
-        if (upgradeRequest == null) {
-            upgradeRequest = engine.createUpgradeRequest(uri, new TimeoutHandler() {
-                @Override
-                public void handleTimeout() {
-                    downstreamFilter.close();
-                }
-            });
-        }
+        upgradeRequest = engine.createUpgradeRequest(uri, new TimeoutHandler() {
+            @Override
+            public void handleTimeout() {
+                downstreamFilter.close();
+            }
+        });
 
         final JdkUpgradeRequest handshakeUpgradeRequest = getJdkUpgradeRequest(downstreamFilter);
 
@@ -198,7 +196,7 @@ class ClientFilter extends Filter {
                     if (proxy) {
                         connectedToProxy = false;
                     }
-                    nextUpgradeRequestListener.nextUpgradeRequest(upgradeRequest);
+                    upgradeRequestCallback.reconnect();
                     return;
                 case SUCCESS:
                     responseParser.destroy();
@@ -314,9 +312,4 @@ class ClientFilter extends Filter {
             }
         };
     }
-
-    public void setNextUpgradeRequestListener(NextUpgradeRequestListener nextUpgradeRequestListener) {
-        this.nextUpgradeRequestListener = nextUpgradeRequestListener;
-    }
-
 }

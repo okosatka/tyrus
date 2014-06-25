@@ -39,40 +39,43 @@
  * holder.
  */
 
-package org.glassfish.tyrus.client;
+package org.glassfish.tyrus.container.grizzly.client;
+
+import javax.websocket.DeploymentException;
 
 import org.glassfish.tyrus.spi.UpgradeRequest;
 
 /**
-* Listener stores given {@link org.glassfish.tyrus.spi.UpgradeRequest} that can be use in another round.
-*
-* @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
-*/
-public abstract class NextUpgradeRequestListener {
+ * Callback stores given {@link org.glassfish.tyrus.spi.UpgradeRequest} that can be use in another round.
+ *
+ * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
+ */
+abstract class UpgradeRequestCallback {
 
-    private UpgradeRequest nextUpgradeRequest;
+    private UpgradeRequest upgradeRequest;
 
 
     /**
-     * Store given {@link org.glassfish.tyrus.spi.UpgradeRequest}.
-     * @param upgradeRequest upgrade reuqest to store.
+     * Initialize container's filter chain and reconnect client to the server.
      */
-    public abstract void nextUpgradeRequest(UpgradeRequest upgradeRequest);
+    abstract void reconnect() throws DeploymentException;
 
     /**
-     * Getter.
+     * Get next {@link org.glassfish.tyrus.spi.UpgradeRequest}.
+     *
      * @return stored {@link org.glassfish.tyrus.spi.UpgradeRequest}.
      */
-    public UpgradeRequest getNextUpgradeRequest() {
-        return nextUpgradeRequest;
+    public UpgradeRequest getUpgradeRequest() {
+        return upgradeRequest;
     }
 
     /**
-     * Setter.
-     * @param nextUpgradeRequest upgrade request to store.
+     * Set next {@link org.glassfish.tyrus.spi.UpgradeRequest}.
+     *
+     * @param upgradeRequest upgrade request to store.
      */
-    public void setNextUpgradeRequest(UpgradeRequest nextUpgradeRequest) {
-        this.nextUpgradeRequest = nextUpgradeRequest;
+    public void setUpgradeRequest(UpgradeRequest upgradeRequest) {
+        this.upgradeRequest = upgradeRequest;
     }
 
 }

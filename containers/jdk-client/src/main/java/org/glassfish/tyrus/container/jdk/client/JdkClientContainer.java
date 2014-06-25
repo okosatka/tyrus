@@ -62,15 +62,14 @@ import javax.websocket.DeploymentException;
 
 import org.glassfish.tyrus.client.ClientManager;
 import org.glassfish.tyrus.client.ClientProperties;
-import org.glassfish.tyrus.client.NextUpgradeRequestListener;
 import org.glassfish.tyrus.client.SslContextConfigurator;
 import org.glassfish.tyrus.client.SslEngineConfigurator;
 import org.glassfish.tyrus.client.authentication.AuthenticationException;
 import org.glassfish.tyrus.core.Base64Utils;
 import org.glassfish.tyrus.core.Utils;
+import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.spi.ClientContainer;
 import org.glassfish.tyrus.spi.ClientEngine;
-import org.glassfish.tyrus.spi.UpgradeRequest;
 
 /**
  * {@link org.glassfish.tyrus.spi.ClientContainer} implementation based on Java 7 NIO API.
@@ -94,45 +93,34 @@ public class JdkClientContainer implements ClientContainer {
             throw new DeploymentException("Invalid URI.", e);
         }
 
-        final TransportFilter transportFilter;
-
-        final ClientFilter clientFilter = createClientFilter(properties, clientEngine, uri);
-        final TaskQueueFilter writeQueue = createTaskQueueFilter(clientFilter);
-        final boolean wss = uri.getScheme().equalsIgnoreCase("wss");
-        if (wss) {
-            SslFilter sslFilter = createSslFilter(cec, properties, writeQueue);
-            transportFilter = createTransportFilter(sslFilter, SSL_INPUT_BUFFER_SIZE);
-        } else {
-            transportFilter = createTransportFilter(writeQueue, INPUT_BUFFER_SIZE);
-        }
+        final boolean secure = uri.getScheme().equalsIgnoreCase("wss");
 
         processProxy(properties, uri);
 
-        final NextUpgradeRequestListener nextUpgradeRequestListener = new NextUpgradeRequestListener() {
+        final UpgradeRequestCallback upgradeRequestCallback = new UpgradeRequestCallback() {
 
             @Override
-            public void nextUpgradeRequest(UpgradeRequest upgradeRequest) {
+            public void reconnect() {
                 try {
-                    TransportFilter transportFilter;
-                    if (wss) {
+                    final TransportFilter transportFilter;
+                    final ClientFilter clientFilter = createClientFilter(properties, clientEngine, uri, this);
+                    final TaskQueueFilter writeQueue = createTaskQueueFilter(clientFilter);
+
+                    if (secure) {
                         SslFilter sslFilter = createSslFilter(cec, properties, writeQueue);
                         transportFilter = createTransportFilter(sslFilter, SSL_INPUT_BUFFER_SIZE);
                     } else {
                         transportFilter = createTransportFilter(writeQueue, INPUT_BUFFER_SIZE);
                     }
-                    ClientFilter clientFilter = createClientFilter(properties, clientEngine, uri);
-                    setNextUpgradeRequest(upgradeRequest);
+
                     connect(clientFilter, transportFilter, uri);
-                } catch (DeploymentException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (DeploymentException | IOException e) {
+                    LOGGER.log(Level.WARNING, LocalizationMessages.CLIENT_CANNOT_CONNECT(uri.toString()));
                 }
             }
         };
-        clientFilter.setNextUpgradeRequestListener(nextUpgradeRequestListener);
 
-        connect(clientFilter, transportFilter, uri);
+        upgradeRequestCallback.reconnect();
     }
 
     private SslFilter createSslFilter(ClientEndpointConfig cec, Map<String, Object> properties, TaskQueueFilter writeQueue) {
@@ -188,8 +176,8 @@ public class JdkClientContainer implements ClientContainer {
         return new TaskQueueFilter(clientFilter);
     }
 
-    private ClientFilter createClientFilter(Map<String, Object> properties, ClientEngine clientEngine, URI uri) throws DeploymentException {
-        return new ClientFilter(clientEngine, uri, getProxyHeaders(properties));
+    private ClientFilter createClientFilter(Map<String, Object> properties, ClientEngine clientEngine, URI uri, UpgradeRequestCallback upgradeRequestCallback) throws DeploymentException {
+        return new ClientFilter(clientEngine, uri, getProxyHeaders(properties), upgradeRequestCallback);
     }
 
     private SocketAddress getServerAddress(URI uri) {
@@ -214,7 +202,7 @@ public class JdkClientContainer implements ClientContainer {
                 try {
                     transportFilter.connect(getServerAddress(uri), null);
                 } catch (AuthenticationException e) {
-                    transportFilter.connect(getServerAddress(uri), null);
+                    //transportFilter.connect(getServerAddress(uri), null);
                 }
                 return;
             }

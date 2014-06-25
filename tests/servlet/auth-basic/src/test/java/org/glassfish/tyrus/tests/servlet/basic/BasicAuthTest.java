@@ -89,30 +89,6 @@ public class BasicAuthTest
         testBasicAuth();
     }
 
-//    @Test
-//    public void testJdkClientBasicAuthProxy() throws DeploymentException, InterruptedException, IOException {
-//        System.setProperty("tyrus.test.container.client", "org.glassfish.tyrus.container.jdk.client.JdkClientContainer");
-//        testBasicAuthWithProxy();
-//    }
-//
-//    @Test
-//    public void testGrizzlyClientBasicAuthProxy() throws DeploymentException, InterruptedException, IOException {
-//        System.setProperty("tyrus.test.container.client", "org.glassfish.tyrus.container.grizzly.client.GrizzlyClientContainer");
-//        testBasicAuthWithProxy();
-//    }
-
-//    @Test
-//    public void testJdkClientBasicAuthFailed() throws DeploymentException, InterruptedException, IOException {
-//        System.setProperty("tyrus.test.container.client", "org.glassfish.tyrus.container.jdk.client.JdkClientContainer");
-//        testBasicAuthFailed();
-//    }
-//
-//    @Test
-//    public void testGrizzlyClientBasicAuthFailed() throws DeploymentException, InterruptedException, IOException {
-//        System.setProperty("tyrus.test.container.client", "org.glassfish.tyrus.container.grizzly.client.GrizzlyClientContainer");
-//        testBasicAuthFailed();
-//    }
-
     private void testBasicAuth() throws DeploymentException, InterruptedException, IOException {
         final Server server = startServer(BasicAuthEchoEndpoint.class);
 
@@ -124,7 +100,7 @@ public class BasicAuthTest
             final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
 
             client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_USERNAME, "user1");
-            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_PASSWORD, "password");
+            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_PASSWORD, "password".getBytes("iso-8859-1"));
 
             client.connectToServer(new Endpoint() {
                 @Override
@@ -152,78 +128,5 @@ public class BasicAuthTest
             stopServer(server);
         }
     }
-    private void testBasicAuthWithProxy() throws DeploymentException, InterruptedException, IOException {
-        final Server server = startServer(BasicAuthEchoEndpoint.class);
-
-        final CountDownLatch messageLatch = new CountDownLatch(1);
-
-        try {
-            final ClientManager client = createClient();
-
-            final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
-
-            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_USERNAME, "user1");
-            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_PASSWORD, "password");
-
-            client.getProperties().put(ClientProperties.PROXY_URI, "http://www-proxy.us.oracle.com:80");
-
-            client.connectToServer(new Endpoint() {
-                @Override
-                public void onOpen(Session session, EndpointConfig EndpointConfig) {
-                    try {
-                        session.addMessageHandler(new MessageHandler.Whole<String>() {
-                            @Override
-                            public void onMessage(String message) {
-                                assertEquals(message, "Do or do not, there is no try.");
-                                messageLatch.countDown();
-                                System.out.println("We have received a message from access protected server endpoint.");
-                            }
-                        });
-
-                        session.getBasicRemote().sendText("Do or do not, there is no try.");
-                    } catch (IOException e) {
-                        // do nothing
-                    }
-                }
-            }, cec, getURI(BasicAuthEchoEndpoint.class.getAnnotation(ServerEndpoint.class).value(), SCHEME));
-
-            messageLatch.await(1, TimeUnit.SECONDS);
-            assertEquals(0, messageLatch.getCount());
-        } finally {
-            stopServer(server);
-        }
-    }
-
-    private void testBasicAuthFailed() throws DeploymentException, InterruptedException, IOException {
-        final Server server = startServer(BasicAuthEchoEndpoint.class);
-
-        final CountDownLatch exceptionLatch = new CountDownLatch(1);
-
-        try {
-            final ClientManager client = createClient();
-
-            final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
-
-            client.getProperties().put(ClientProperties.HANDSHAKE_TIMEOUT, 5000);
-            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_USERNAME, "unknown-user");
-            client.getProperties().put(ClientProperties.HTTP_AUTHENTICATION_PASSWORD, "without-password");
-
-            try {
-                client.connectToServer(new Endpoint() {
-                    @Override
-                    public void onOpen(Session session, EndpointConfig EndpointConfig) {}
-                }, cec, getURI(BasicAuthEchoEndpoint.class.getAnnotation(ServerEndpoint.class).value(), SCHEME));
-            } catch (DeploymentException e) {
-                exceptionLatch.countDown();
-                System.out.println("OK - Exception occurred during a handshake with wrong credentials.");
-            }
-
-            assertEquals(0, exceptionLatch.getCount());
-        } finally {
-            stopServer(server);
-        }
-    }
-
-
 
 }
