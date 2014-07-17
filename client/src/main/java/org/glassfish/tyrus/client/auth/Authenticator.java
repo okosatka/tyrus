@@ -43,12 +43,22 @@ package org.glassfish.tyrus.client.auth;
 import java.net.URI;
 
 import org.glassfish.tyrus.client.ClientProperties;
+import org.glassfish.tyrus.spi.UpgradeRequest;
+import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
- * Http Authentication provider.
- * Class generates authorization response for {@code Authorization} HTTP request header.
+ * Http Authentication provider. Implement this abstract class to provide client authentication.
+ * <p/>
+ * The only method to implement {@link #generateAuthorizationHeader(URI, String, Credentials)} generates
+ * authorization response from given request URI, HTTP response {@link UpgradeResponse#WWW_AUTHENTICATE} and {@link Credentials}
+ * for {@link UpgradeRequest#AUTHORIZATION} HTTP request header. An instance of implementing
+ * class must be registered by calling {@link AuthConfig.Builder#registerAuthProvider(String, Authenticator)}.
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
+ * @see AuthConfig
+ * @see AuthConfig.Builder#registerAuthProvider(String, Authenticator)
+ * @see ClientProperties#AUTH_CONFIG
+ * @see ClientProperties#CREDENTIALS
  */
 public abstract class Authenticator {
 

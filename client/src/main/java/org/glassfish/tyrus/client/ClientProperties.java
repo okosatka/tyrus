@@ -41,7 +41,9 @@ package org.glassfish.tyrus.client;
 
 
 import org.glassfish.tyrus.client.auth.AuthConfig;
+import org.glassfish.tyrus.client.auth.AuthenticationException;
 import org.glassfish.tyrus.client.auth.Authenticator;
+import org.glassfish.tyrus.client.auth.Credentials;
 
 /**
  * Tyrus client configuration properties.
@@ -158,7 +160,7 @@ public final class ClientProperties {
      * and Grizzly client. Instance of {@link org.glassfish.grizzly.threadpool.ThreadPoolConfig}, can be used
      * for Grizzly client.
      * <p/>
-     * Sample bellow demonstrates how to use this property:
+     * Sample below demonstrates how to use this property:
      * <pre>
      *     client.getProperties().put(ClientProperties.WORKER_THREAD_POOL_CONFIG, ThreadPoolConfig.defaultConfig());
      * </pre>
@@ -169,9 +171,11 @@ public final class ClientProperties {
      * Client-side authentication configuration. If no AuthConfig is specified then default configuration will be used,
      * containing both Basic and Digest provided authenticators.
      * <p/>
-     * Sample bellow demonstrates how to use this property:
+     * An instance of {@link AuthConfig} is expected.
+     * <p/>
+     * Sample below demonstrates how to use this property:
      * <pre>
-     *     client.getProperties().put(ClientProperties.AUTH_CONFIG, AuthConfig.builder().disableProvidedBasicAuth().build());
+     *     client.getProperties().put(ClientProperties.AUTH_CONFIG, AuthConfig.builder().enableProvidedBasicAuth().build());
      * </pre>
      *
      * @see AuthConfig
@@ -181,13 +185,22 @@ public final class ClientProperties {
     public static final String AUTH_CONFIG = "org.glassfish.tyrus.client.http.auth.AuthConfig";
 
     /**
-     * Client-side authentication credentials. Property is required for access protected server endpoints and provided
-     * authenticators. User defined authenticators do not have to use this property.
+     * Client-side authentication credentials.
      * <p/>
-     * Sample bellow demonstrates how to use this property:
+     * An instance of {@link Credentials} is expected.
+     * <p/>
+     * Provided authenticators (both Basic and Digest) require this property set,
+     * otherwise {@link AuthenticationException} will be thrown during a handshake.
+     * User defined authenticators may look up credentials in another sources.
+     * <p/>
+     * Sample below demonstrates how to use this property:
      * <pre>
      *     client.getProperties().put(ClientProperties.CREDENTIALS, new Credentials("websocket_user", "password");
      * </pre>
+     *
+     * @see Credentials
+     * @see AuthConfig
+     * @see Authenticator
      */
     public static final String CREDENTIALS = "org.glassfish.tyrus.client.http.auth.Credentials";
 }

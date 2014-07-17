@@ -41,6 +41,7 @@
 package org.glassfish.tyrus.client.auth;
 
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -104,8 +105,8 @@ public class AuthConfig {
      * <p/>
      * <pre><code>
      * AuthConfig authConfig = AuthConfig.Builder.create().
-     *                          putAuthProvider("NTLM", myAuthenticator).
-     *                          putAuthProvider("Basic", myBasicAuthenticator).
+     *                          registerAuthProvider("NTLM", myAuthenticator).
+     *                          registerAuthProvider("Basic", myBasicAuthenticator).
      *                          build();
      * </code></pre>
      * <p/>
@@ -122,32 +123,37 @@ public class AuthConfig {
      */
     public final static class Builder {
 
-        private Map<String, Authenticator> authenticators = new TreeMap<String, Authenticator>(String.CASE_INSENSITIVE_ORDER);
+        private Map<String, Authenticator> authenticators = Collections.synchronizedSortedMap(new TreeMap<String, Authenticator>(String.CASE_INSENSITIVE_ORDER));
 
         private Builder() {
             authenticators.put(BASIC, new BasicAuthenticator());
             authenticators.put(DIGEST, new DigestAuthenticator());
         }
 
+        /**
+         * Create an empty {@link AuthConfig} instance.
+         *
+         * @return an empty {@link AuthConfig} instance.
+         */
         public static Builder create() {
             return new Builder();
         }
 
         /**
-         * Add user defined {@link Authenticator} with scheme as a key. The key is case insensitive.
+         * Register user defined {@link Authenticator} with scheme as a key. The key is case insensitive.
          *
          * @param userDefinedAuthenticator user defined {@link Authenticator}.
-         * @return this.
+         * @return updated {@link AuthConfig} instance.
          */
-        public final Builder putAuthProvider(final String scheme, final Authenticator userDefinedAuthenticator) {
+        public final Builder registerAuthProvider(final String scheme, final Authenticator userDefinedAuthenticator) {
             this.authenticators.put(scheme, userDefinedAuthenticator);
             return this;
         }
 
         /**
-         * Disable Tyrus-provided Basic Authenticator provided by Tyrus.
+         * Disable Basic Authenticator provided by Tyrus.
          *
-         * @return this.
+         * @return updated {@link AuthConfig} instance.
          */
         public final Builder disableProvidedBasicAuth() {
             if (authenticators.get(BASIC) != null && authenticators.get(BASIC) instanceof BasicAuthenticator) {
@@ -157,9 +163,9 @@ public class AuthConfig {
         }
 
         /**
-         * Disable Tyrus-provided Digest Authenticator provided by Tyrus.
+         * Disable Digest Authenticator provided by Tyrus.
          *
-         * @return this.
+         * @return updated {@link AuthConfig} instance.
          */
         public final Builder disableProvidedDigestAuth() {
             if (authenticators.get(DIGEST) != null && authenticators.get(DIGEST) instanceof DigestAuthenticator) {

@@ -40,12 +40,37 @@
 
 package org.glassfish.tyrus.client.auth;
 
+import java.net.URI;
+
+import org.glassfish.tyrus.client.ClientProperties;
 import org.glassfish.tyrus.core.HandshakeException;
+import org.glassfish.tyrus.spi.UpgradeResponse;
 
 /**
- * An exception is thrown when authentication process failed.
+ * This exception is thrown when authentication process failed.
+ * <p/>
+ * Can be thrown when:
+ * <ul>
+ * <li>
+ * HTTP response status code 401 is received and {@link UpgradeResponse#WWW_AUTHENTICATE}
+ * contains scheme which is not covered by any {@link Authenticator} registered in {@link AuthConfig}
+ * </li>
+ * <li>
+ * HTTP response status code 401 is received and {@link UpgradeResponse#WWW_AUTHENTICATE}
+ * does not contain authentication scheme token or even {@link UpgradeResponse#WWW_AUTHENTICATE} is missing
+ * </li>
+ * <li>
+ * {@link Authenticator#generateAuthorizationHeader(URI, String, Credentials)} is called on one of provided
+ * {@link Authenticator}, but no {@link Credentials} are passed as a parameter
+ * </li>
+ * <li>
+ * property {@link ClientProperties#AUTH_CONFIG} is not instance of {@link AuthConfig}
+ * </li>
+ * </ul>
  *
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
+ * @see Authenticator#generateAuthorizationHeader(URI, String, Credentials)
+ * @see AuthConfig
  */
 public class AuthenticationException extends HandshakeException {
 

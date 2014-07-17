@@ -108,8 +108,6 @@ public class TyrusClientEngine implements ClientEngine {
     private volatile Handshake clientHandShake = null;
     private volatile TimeoutHandler timeoutHandler = null;
     private volatile TyrusClientEngineState clientEngineState = TyrusClientEngineState.INIT;
-    private volatile Authenticator authenticator = null;
-    private volatile String wwwAuthenticateHeader = null;
 
     /**
      * Create {@link org.glassfish.tyrus.spi.WebSocketEngine} instance based on passed {@link WebSocketContainer} and with configured maximal
@@ -140,11 +138,11 @@ public class TyrusClientEngine implements ClientEngine {
 
         clientHandShake.prepareRequest();
 
-        if (authenticator != null) {
+        if (clientEngineState.getAuthenticator() != null) {
             String authorizationHeader;
             try {
                 final Credentials credentials = (Credentials) properties.get(ClientProperties.CREDENTIALS);
-                authorizationHeader = authenticator.generateAuthorizationHeader(uri, wwwAuthenticateHeader, credentials);
+                authorizationHeader = clientEngineState.getAuthenticator().generateAuthorizationHeader(uri, clientEngineState.getWwwAuthenticateHeader(), credentials);
             } catch (AuthenticationException e) {
                 listener.onError(e);
                 return null;
@@ -181,10 +179,13 @@ public class TyrusClientEngine implements ClientEngine {
 
                         clientEngineState = TyrusClientEngineState.IN_PROGRESS;
 
-                        AuthConfig authConfig = Utils.getProperty(properties, ClientProperties.AUTH_CONFIG, AuthConfig.class);
+                        AuthConfig authConfig = Utils.getProperty(properties, ClientProperties.AUTH_CONFIG, AuthConfig.class, AuthConfig.Builder.create().build());
                         if (authConfig == null) {
-                            authConfig = AuthConfig.Builder.create().build();
+                            listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
+                            return UPGRADE_INFO_FAILED;
                         }
+
+                        String wwwAuthenticateHeader = null;
                         final List<String> header = upgradeResponse.getHeaders().get(UpgradeResponse.WWW_AUTHENTICATE);
                         if (header != null) {
                             StringBuilder b = new StringBuilder();
@@ -197,14 +198,22 @@ public class TyrusClientEngine implements ClientEngine {
                             wwwAuthenticateHeader = b.toString();
                         }
 
+                        if (wwwAuthenticateHeader == null || wwwAuthenticateHeader.equals("")) {
+                            listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
+                            return UPGRADE_INFO_FAILED;
+                        }
+
                         final String[] tokens = wwwAuthenticateHeader.trim().split("\\s+", 2);
                         final String scheme = tokens[0];
 
-                        authenticator = authConfig.getAuthenticators().get(scheme);
+                        final Authenticator authenticator = authConfig.getAuthenticators().get(scheme);
                         if (authenticator == null) {
                             listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
                             return UPGRADE_INFO_FAILED;
                         }
+
+                        clientEngineState.setAuthenticator(authenticator);
+                        clientEngineState.setWwwAuthenticateHeader(wwwAuthenticateHeader);
 
                         return UPGRADE_INFO_ANOTHER_REQUEST_REQUIRED;
                     default:
@@ -487,7 +496,7 @@ public class TyrusClientEngine implements ClientEngine {
         /**
          * In progress.
          */
-        IN_PROGRESS,
+        IN_PROGRESS(),
 
         /**
          * Handshake failed.
@@ -497,6 +506,25 @@ public class TyrusClientEngine implements ClientEngine {
         /**
          * Handshake succeeded.
          */
-        SUCCESS
+        SUCCESS;
+
+        private Authenticator authenticator;
+        private String wwwAuthenticateHeader;
+
+        public Authenticator getAuthenticator() {
+            return authenticator;
+        }
+
+        public void setAuthenticator(Authenticator authenticator) {
+            this.authenticator = authenticator;
+        }
+
+        public String getWwwAuthenticateHeader() {
+            return wwwAuthenticateHeader;
+        }
+
+        public void setWwwAuthenticateHeader(String wwwAuthenticateHeader) {
+            this.wwwAuthenticateHeader = wwwAuthenticateHeader;
+        }
     }
 }
