@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,10 @@ import javax.websocket.Session;
 import javax.websocket.WebSocketContainer;
 import javax.websocket.server.HandshakeRequest;
 
+import org.glassfish.tyrus.client.auth.AuthConfig;
+import org.glassfish.tyrus.client.auth.AuthenticationException;
+import org.glassfish.tyrus.client.auth.Authenticator;
+import org.glassfish.tyrus.client.auth.Credentials;
 import org.glassfish.tyrus.core.Handshake;
 import org.glassfish.tyrus.core.HandshakeException;
 import org.glassfish.tyrus.core.ProtocolHandler;
@@ -103,6 +108,8 @@ public class TyrusClientEngine implements ClientEngine {
     private volatile Handshake clientHandShake = null;
     private volatile TimeoutHandler timeoutHandler = null;
     private volatile TyrusClientEngineState clientEngineState = TyrusClientEngineState.INIT;
+    private volatile Authenticator authenticator = null;
+    private volatile String wwwAuthenticateHeader = null;
 
     /**
      * Create {@link org.glassfish.tyrus.spi.WebSocketEngine} instance based on passed {@link WebSocketContainer} and with configured maximal
@@ -132,6 +139,19 @@ public class TyrusClientEngine implements ClientEngine {
         clientHandShake.setSubProtocols(config.getPreferredSubprotocols());
 
         clientHandShake.prepareRequest();
+
+        if (authenticator != null) {
+            String authorizationHeader;
+            try {
+                final Credentials credentials = (Credentials) properties.get(ClientProperties.CREDENTIALS);
+                authorizationHeader = authenticator.generateAuthorizationHeader(uri, wwwAuthenticateHeader, credentials);
+            } catch (AuthenticationException e) {
+                listener.onError(e);
+                return null;
+            }
+            clientHandShake.getRequest().getHeaders().put(UpgradeRequest.AUTHORIZATION, Collections.singletonList(authorizationHeader));
+        }
+
         config.getConfigurator().beforeRequest(clientHandShake.getRequest().getHeaders());
 
         return clientHandShake.getRequest();
@@ -142,6 +162,7 @@ public class TyrusClientEngine implements ClientEngine {
 
         switch (clientEngineState) {
             case INIT:
+            case IN_PROGRESS:
                 switch (upgradeResponse.getStatus()) {
                     case 101:
                         // the connection has been upgraded
@@ -150,8 +171,42 @@ public class TyrusClientEngine implements ClientEngine {
                             return processUpgradeResponse(upgradeResponse, writer, closeListener);
                         } catch (HandshakeException e) {
                             listener.onError(e);
-                            return null;
+                            return UPGRADE_INFO_FAILED;
                         }
+                    case 401:
+                        if (clientEngineState == TyrusClientEngineState.IN_PROGRESS) {
+                            listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
+                            return UPGRADE_INFO_FAILED;
+                        }
+
+                        clientEngineState = TyrusClientEngineState.IN_PROGRESS;
+
+                        AuthConfig authConfig = Utils.getProperty(properties, ClientProperties.AUTH_CONFIG, AuthConfig.class);
+                        if (authConfig == null) {
+                            authConfig = AuthConfig.Builder.create().build();
+                        }
+                        final List<String> header = upgradeResponse.getHeaders().get(UpgradeResponse.WWW_AUTHENTICATE);
+                        if (header != null) {
+                            StringBuilder b = new StringBuilder();
+                            for (int i = 0; i < header.size(); i++) {
+                                if (i > 0) {
+                                    b.append(',');
+                                }
+                                b.append(header.get(i));
+                            }
+                            wwwAuthenticateHeader = b.toString();
+                        }
+
+                        final String[] tokens = wwwAuthenticateHeader.trim().split("\\s+", 2);
+                        final String scheme = tokens[0];
+
+                        authenticator = authConfig.getAuthenticators().get(scheme);
+                        if (authenticator == null) {
+                            listener.onError(new AuthenticationException(LocalizationMessages.AUTHENTICATION_FAILED()));
+                            return UPGRADE_INFO_FAILED;
+                        }
+
+                        return UPGRADE_INFO_ANOTHER_REQUEST_REQUIRED;
                     default:
                         clientEngineState = TyrusClientEngineState.FAILED;
                         HandshakeException e = new HandshakeException(upgradeResponse.getStatus(),
@@ -242,11 +297,6 @@ public class TyrusClientEngine implements ClientEngine {
             @Override
             public ClientUpgradeStatus getUpgradeStatus() {
                 return ClientUpgradeStatus.SUCCESS;
-            }
-
-            @Override
-            public UpgradeRequest getUpgradeRequest() {
-                return null;
             }
 
             @Override
@@ -405,8 +455,16 @@ public class TyrusClientEngine implements ClientEngine {
         }
 
         @Override
-        public UpgradeRequest getUpgradeRequest() {
+        public Connection createConnection() {
             return null;
+        }
+    };
+
+    private static final ClientUpgradeInfo UPGRADE_INFO_ANOTHER_REQUEST_REQUIRED = new ClientUpgradeInfo() {
+
+        @Override
+        public ClientUpgradeStatus getUpgradeStatus() {
+            return ClientUpgradeStatus.ANOTHER_UPGRADE_REQUEST_REQUIRED;
         }
 
         @Override
@@ -425,6 +483,11 @@ public class TyrusClientEngine implements ClientEngine {
          * Initial state.
          */
         INIT,
+
+        /**
+         * In progress.
+         */
+        IN_PROGRESS,
 
         /**
          * Handshake failed.

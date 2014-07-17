@@ -39,6 +39,10 @@
  */
 package org.glassfish.tyrus.client;
 
+
+import org.glassfish.tyrus.client.auth.AuthConfig;
+import org.glassfish.tyrus.client.auth.Authenticator;
+
 /**
  * Tyrus client configuration properties.
  *
@@ -160,4 +164,30 @@ public final class ClientProperties {
      * </pre>
      */
     public static final String WORKER_THREAD_POOL_CONFIG = "org.glassfish.tyrus.client.workerThreadPoolConfig";
+
+    /**
+     * Client-side authentication configuration. If no AuthConfig is specified then default configuration will be used,
+     * containing both Basic and Digest provided authenticators.
+     * <p/>
+     * Sample bellow demonstrates how to use this property:
+     * <pre>
+     *     client.getProperties().put(ClientProperties.AUTH_CONFIG, AuthConfig.builder().disableProvidedBasicAuth().build());
+     * </pre>
+     *
+     * @see AuthConfig
+     * @see AuthConfig.Builder
+     * @see Authenticator
+     */
+    public static final String AUTH_CONFIG = "org.glassfish.tyrus.client.http.auth.AuthConfig";
+
+    /**
+     * Client-side authentication credentials. Property is required for access protected server endpoints and provided
+     * authenticators. User defined authenticators do not have to use this property.
+     * <p/>
+     * Sample bellow demonstrates how to use this property:
+     * <pre>
+     *     client.getProperties().put(ClientProperties.CREDENTIALS, new Credentials("websocket_user", "password");
+     * </pre>
+     */
+    public static final String CREDENTIALS = "org.glassfish.tyrus.client.http.auth.Credentials";
 }
