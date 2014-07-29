@@ -358,7 +358,7 @@ public class GrizzlyClientSocket {
                         InetSocketAddress inetSocketAddress = (InetSocketAddress) address;
                         if (inetSocketAddress.isUnresolved()) {
                             // resolve the address.
-                            address = new InetSocketAddress(upgradeRequest.getRequestURI().getHost(), upgradeRequest.getRequestURI().getPort());
+                            address = new InetSocketAddress(inetSocketAddress.getHostName(), inetSocketAddress.getPort());
                         }
                     }
                     connectAddress = address;

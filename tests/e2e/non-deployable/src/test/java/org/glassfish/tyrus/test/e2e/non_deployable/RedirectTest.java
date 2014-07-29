@@ -694,10 +694,10 @@ public class RedirectTest extends TestContainer {
         }
     }
 
-    private HttpServer startHttpRedirectionServer(int port, HttpStatus httpStatus, String mapping) throws IOException {
+    private HttpServer startHttpRedirectionServer(int port, HttpStatus httpStatus, String location) throws IOException {
         HttpServer httpServer = createHttpServer(port);
 
-        httpServer.getServerConfiguration().addHttpHandler(new RedirectHandler(httpStatus, mapping), REDIRECTION_PATH);
+        httpServer.getServerConfiguration().addHttpHandler(new RedirectHandler(httpStatus, location), REDIRECTION_PATH);
 
         httpServer.start();
 
