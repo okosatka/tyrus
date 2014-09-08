@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -134,7 +135,7 @@ public class InMemoryClientContainer implements ClientContainer {
 
                 final Connection serverConnection = upgradeInfo.createConnection(serverWriter, null);
                 final ClientEngine.ClientUpgradeInfo clientClientUpgradeInfo = clientEngine.processResponse(upgradeResponse, clientWriter, null);
-                final Connection clientConnection = clientClientUpgradeInfo.createConnection();
+                final Connection clientConnection = clientClientUpgradeInfo.createConnection(new HashMap<String, Object>());
 
                 if (clientConnection == null) {
                     throw new DeploymentException("");

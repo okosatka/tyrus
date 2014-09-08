@@ -41,6 +41,7 @@
 package org.glassfish.tyrus.container.grizzly.server;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -312,7 +313,14 @@ class GrizzlyServerFilter extends BaseFilter {
                 .requestURI(URI.create(requestPacket.getRequestURI()))
                 .queryString(requestPacket.getQueryString())
                 .secure(requestPacket.isSecure())
+                .remoteInetAddress(((InetSocketAddress) requestPacket.getConnection().getPeerAddress()).getAddress())
                 .remoteAddr(requestPacket.getRemoteAddress())
+                .remoteHost(requestPacket.getRemoteHost())
+                .remotePort(requestPacket.getRemotePort())
+                .localInetAddress(((java.net.InetSocketAddress) requestPacket.getConnection().getLocalAddress()).getAddress())
+                .localAddr(requestPacket.getLocalAddress())
+                .localName(requestPacket.getLocalName())
+                .localPort(requestPacket.getLocalPort())
                 .build();
 
         for (String name : requestPacket.getHeaders().names()) {

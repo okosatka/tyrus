@@ -41,6 +41,7 @@ package org.glassfish.tyrus.container.jdk.client;
 
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 import org.glassfish.tyrus.spi.CompletionHandler;
 
@@ -111,13 +112,16 @@ class Filter {
      * An event listener that is called when a connection is set up.
      * This event travels up in the filter chain.
      * <p/>
-     * If the {@link Filter} needs to process this event, it must implement {@link #processConnect()} method.
+     * If the {@link Filter} needs to process this event, it must implement
+     * {@link #processConnect(Map)} method.
+     *
+     * @param connectionProperties connection related properties like local/remote IP addresses, port numbers and hostnames.
      */
-    final void onConnect() {
-        processConnect();
+    final void onConnect(Map<String, Object> connectionProperties) {
+        processConnect(connectionProperties);
 
         if (upstreamFilter != null) {
-            upstreamFilter.onConnect();
+            upstreamFilter.onConnect(connectionProperties);
         }
     }
 
@@ -193,11 +197,12 @@ class Filter {
     }
 
     /**
-     * Process {@link #onConnect()}.
+     * Process {@link #onConnect(Map)}.
      *
-     * @see #onConnect()
+     * @param connectionProperties connection related properties like local/remote IP addresses, port numbers and hostnames.
+     * @see #onConnect(Map)
      */
-    void processConnect() {
+    void processConnect(Map<String, Object> connectionProperties) {
     }
 
     /**

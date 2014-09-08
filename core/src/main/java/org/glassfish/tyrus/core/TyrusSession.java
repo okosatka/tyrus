@@ -41,6 +41,7 @@ package org.glassfish.tyrus.core;
 
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -108,7 +109,14 @@ public class TyrusSession implements Session, DistributedSession {
     private final BinaryBuffer binaryBuffer = new BinaryBuffer();
     private final List<Extension> negotiatedExtensions;
     private final String negotiatedSubprotocol;
+    private InetAddress remoteInetAddress;
     private final String remoteAddr;
+    private final String remoteHostName;
+    private final Integer remotePort;
+    private InetAddress localInetAddress;
+    private final String localAddr;
+    private final String localHostName;
+    private final Integer localPort;
     private final DebugContext debugContext;
 
     private final Map<RemoteSession.DistributedMapKey, Object> distributedPropertyMap;
@@ -125,10 +133,11 @@ public class TyrusSession implements Session, DistributedSession {
     private volatile ScheduledFuture<?> heartbeatTask;
 
     TyrusSession(WebSocketContainer container, TyrusWebSocket socket, TyrusEndpointWrapper endpointWrapper,
-                 String subprotocol, List<Extension> extensions, boolean isSecure,
-                 URI requestURI, String queryString, Map<String, String> pathParameters, Principal principal,
-                 Map<String, List<String>> requestParameterMap, final ClusterContext clusterContext,
-                 String connectionId, final String remoteAddr, DebugContext debugContext) {
+                 String subprotocol, List<Extension> extensions, boolean isSecure, URI requestURI, String queryString, Map<String,
+                 String> pathParameters, Principal principal, Map<String, List<String>> requestParameterMap,
+                 final ClusterContext clusterContext, String connectionId, final InetAddress remoteInetAddress, final String remoteAddr,
+                 final String remoteHostName, final Integer remotePort, final InetAddress localInetAddress, final String localAddr,
+                 final String localHostName, final Integer localPort, DebugContext debugContext) {
         this.container = container;
         this.endpointWrapper = endpointWrapper;
         this.negotiatedExtensions = extensions == null ? Collections.<Extension>emptyList() : Collections.unmodifiableList(extensions);
@@ -143,7 +152,14 @@ public class TyrusSession implements Session, DistributedSession {
         this.userPrincipal = principal;
         this.requestParameterMap = requestParameterMap == null ? Collections.<String, List<String>>emptyMap() : Collections.unmodifiableMap(new HashMap<String, List<String>>(requestParameterMap));
         this.connectionId = connectionId;
+        this.remoteInetAddress = remoteInetAddress;
         this.remoteAddr = remoteAddr;
+        this.remoteHostName = remoteHostName;
+        this.remotePort = remotePort;
+        this.localInetAddress = localInetAddress;
+        this.localAddr = localAddr;
+        this.localHostName = localHostName;
+        this.localPort = localPort;
         this.debugContext = debugContext;
 
         if (container != null) {

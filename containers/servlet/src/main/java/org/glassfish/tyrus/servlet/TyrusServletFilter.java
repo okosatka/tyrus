@@ -223,6 +223,11 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
                     })
                     .parameterMap(httpServletRequest.getParameterMap())
                     .remoteAddr(httpServletRequest.getRemoteAddr())
+                    .remoteHost(httpServletRequest.getRemoteHost())
+                    .remotePort(httpServletRequest.getRemotePort())
+                    .localAddr(httpServletRequest.getLocalAddr())
+                    .localName(httpServletRequest.getLocalName())
+                    .localPort(httpServletRequest.getLocalPort())
                     .build();
 
             Enumeration<String> headerNames = httpServletRequest.getHeaderNames();
