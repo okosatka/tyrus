@@ -41,13 +41,19 @@
 package org.glassfish.tyrus.test.standard_config;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import javax.websocket.ClientEndpointConfig;
+import javax.websocket.DecodeException;
+import javax.websocket.Decoder;
 import javax.websocket.DeploymentException;
+import javax.websocket.EncodeException;
+import javax.websocket.Encoder;
 import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
@@ -56,8 +62,14 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
 
+import javax.json.Json;
+import javax.json.JsonException;
+import javax.json.JsonObject;
+
 import org.glassfish.tyrus.core.TyrusSession;
+import org.glassfish.tyrus.core.coder.CoderAdapter;
 import org.glassfish.tyrus.server.Server;
+import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
 import org.junit.Test;
@@ -68,22 +80,26 @@ import static org.junit.Assert.assertTrue;
  */
 public class SessionInfoTest extends TestContainer {
 
-    @ServerEndpoint(value = "/")
+    @ServerEndpoint(value = "/info")
     public static class EchoEndpoint {
         @OnOpen
         public void onOpen(Session session) throws IOException {
             session.getBasicRemote().sendText("onOpen");
         }
+
         @OnMessage
         public String onMessage(Session session, String message) throws UnknownHostException {
             TyrusSession tyrusSession = (TyrusSession) session;
             printSessionInfo(tyrusSession, "SERVER");
-            return String.valueOf(checkSessionInfoNotNull(tyrusSession));
+            if (message.equals("get info")) {
+                return String.valueOf(checkSessionInfoNotNull(tyrusSession));
+            }
+            return null;
         }
     }
 
     @Test
-    public void testSessionInfo() throws DeploymentException {
+    public void testSessionInfoNotNull() throws DeploymentException {
         Server server = startServer(EchoEndpoint.class);
 
         final CountDownLatch infoOnClientLatch = new CountDownLatch(1);
@@ -98,19 +114,15 @@ public class SessionInfoTest extends TestContainer {
                 public void onOpen(Session session, EndpointConfig config) {
                     TyrusSession tyrusSession = (TyrusSession) session;
 
-                    try {
-                        if (checkSessionInfoNotNull(tyrusSession)) {
-                            infoOnClientLatch.countDown();
-                            try {
-                                session.getBasicRemote().sendText("get info");
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                    if (checkSessionInfoNotNull(tyrusSession)) {
+                        infoOnClientLatch.countDown();
+                        try {
+                            session.getBasicRemote().sendText("get info");
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                        printSessionInfo(tyrusSession, "CLIENT");
-                    } catch (UnknownHostException e) {
-                        e.printStackTrace();
                     }
+                    printSessionInfo(tyrusSession, "CLIENT");
 
                     session.addMessageHandler(new MessageHandler.Whole<String>() {
                         @Override
@@ -134,14 +146,73 @@ public class SessionInfoTest extends TestContainer {
         }
     }
 
-    private static boolean checkSessionInfoNotNull(TyrusSession tyrusSession) throws UnknownHostException {
+    @ServerEndpoint(value = "/cross-check", encoders = {JsonEncoder.class})
+    public static class JsonEndpoint {
+        @OnOpen
+        public void onOpen(Session session) throws IOException, EncodeException {
+            TyrusSession tyrusSession = (TyrusSession) session;
+            printSessionInfo(tyrusSession, "SERVER");
+            JsonObject jsonObject = Json.createObjectBuilder().add(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR, tyrusSession.getLocalAddr())
+                    .add(ClientEngine.ClientUpgradeInfo.LOCAL_PORT, tyrusSession.getLocalPort())
+                    .add(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR, tyrusSession.getRemoteAddr())
+                    .add(ClientEngine.ClientUpgradeInfo.REMOTE_PORT, tyrusSession.getRemotePort()).build();
+            System.out.println(jsonObject);
+            session.getBasicRemote().sendObject(jsonObject);
+        }
+    }
+
+    @Test
+    public void testCrossCheck() throws DeploymentException {
+        Server server = startServer(JsonEndpoint.class);
+
+        final CountDownLatch crossCheckPortLatch = new CountDownLatch(1);
+        final CountDownLatch crossCheckIPAdressLatch = new CountDownLatch(1);
+
+        try {
+            final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().decoders(Collections.<Class<? extends Decoder>>singletonList(JsonDecoder.class)).build();
+
+            createClient().connectToServer(new Endpoint() {
+
+                @Override
+                public void onOpen(Session session, EndpointConfig config) {
+                    final TyrusSession tyrusSession = (TyrusSession) session;
+
+                    printSessionInfo(tyrusSession, "CLIENT");
+
+                    session.addMessageHandler(new MessageHandler.Whole<JsonObject>() {
+                        @Override
+                        public void onMessage(JsonObject info) {
+                            if (info.getString(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR).equals(tyrusSession.getRemoteAddr())
+                                    && info.getString(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR).equals(tyrusSession.getLocalAddr())) {
+                                crossCheckIPAdressLatch.countDown();
+                            }
+                            if (info.getInt(ClientEngine.ClientUpgradeInfo.LOCAL_PORT) == tyrusSession.getRemotePort()
+                                    && info.getInt(ClientEngine.ClientUpgradeInfo.REMOTE_PORT) == tyrusSession.getLocalPort()) {
+                                crossCheckPortLatch.countDown();
+                            }
+                        }
+                    });
+                }
+            }, cec, getURI(JsonEndpoint.class));
+
+            assertTrue("Remote vs local IP addresses on server and client do not fit", crossCheckIPAdressLatch.await(1, TimeUnit.SECONDS));
+            assertTrue("Remote vs local port numbers on server and client do not fit", crossCheckPortLatch.await(1, TimeUnit.SECONDS));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage(), e);
+        } finally {
+            stopServer(server);
+        }
+    }
+
+    private static boolean checkSessionInfoNotNull(TyrusSession tyrusSession) {
         return (tyrusSession.getRemoteInetAddress() != null && tyrusSession.getRemoteAddr() != null
                 && tyrusSession.getRemoteHostName() != null && tyrusSession.getRemotePort() != -1
                 && tyrusSession.getLocalInetAddress() != null && tyrusSession.getLocalAddr() != null
                 && tyrusSession.getLocalHostName() != null && tyrusSession.getLocalPort() != -1);
     }
 
-    private static void printSessionInfo(TyrusSession tyrusSession, String prefix) throws UnknownHostException {
+    private static void printSessionInfo(TyrusSession tyrusSession, String prefix) {
         InetAddress remoteInetAddress = tyrusSession.getRemoteInetAddress();
         System.out.println(prefix + " remoteInetAddress.getAddress(): " + remoteInetAddress.getHostAddress());
         System.out.println(prefix + " remoteAddr: " + tyrusSession.getRemoteAddr());
@@ -152,5 +223,29 @@ public class SessionInfoTest extends TestContainer {
         System.out.println(prefix + " localAddr: " + tyrusSession.getLocalAddr());
         System.out.println(prefix + " localName: " + tyrusSession.getLocalHostName());
         System.out.println(prefix + " localPort: " + tyrusSession.getLocalPort());
+    }
+
+    public static class JsonEncoder extends CoderAdapter implements Encoder.Text<JsonObject> {
+        @Override
+        public String encode(JsonObject o) throws EncodeException {
+            return o.toString();
+        }
+    }
+
+    public static class JsonDecoder extends CoderAdapter implements Decoder.Text<JsonObject> {
+        @Override
+        public JsonObject decode(String s) throws DecodeException {
+            try {
+                JsonObject jsonObject = Json.createReader(new StringReader(s)).readObject();
+                return jsonObject;
+            } catch (JsonException je) {
+                throw new DecodeException(s, "JSON not decoded", je);
+            }
+        }
+
+        @Override
+        public boolean willDecode(String s) {
+            return true;
+        }
     }
 }

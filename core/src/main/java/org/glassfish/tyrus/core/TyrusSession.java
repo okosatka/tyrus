@@ -42,7 +42,9 @@ package org.glassfish.tyrus.core;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.security.Principal;
@@ -109,11 +111,11 @@ public class TyrusSession implements Session, DistributedSession {
     private final BinaryBuffer binaryBuffer = new BinaryBuffer();
     private final List<Extension> negotiatedExtensions;
     private final String negotiatedSubprotocol;
-    private InetAddress remoteInetAddress;
+    private final InetAddress remoteInetAddress;
     private final String remoteAddr;
     private final String remoteHostName;
     private final Integer remotePort;
-    private InetAddress localInetAddress;
+    private final InetAddress localInetAddress;
     private final String localAddr;
     private final String localHostName;
     private final Integer localPort;
@@ -152,14 +154,34 @@ public class TyrusSession implements Session, DistributedSession {
         this.userPrincipal = principal;
         this.requestParameterMap = requestParameterMap == null ? Collections.<String, List<String>>emptyMap() : Collections.unmodifiableMap(new HashMap<String, List<String>>(requestParameterMap));
         this.connectionId = connectionId;
-        this.remoteInetAddress = remoteInetAddress;
         this.remoteAddr = remoteAddr;
         this.remoteHostName = remoteHostName;
         this.remotePort = remotePort;
-        this.localInetAddress = localInetAddress;
         this.localAddr = localAddr;
         this.localHostName = localHostName;
         this.localPort = localPort;
+        if (localInetAddress != null) {
+            this.localInetAddress = localInetAddress;
+        } else {
+            InetAddress inetAddress;
+            try {
+                inetAddress = InetAddress.getByName(localAddr);
+            } catch (UnknownHostException e) {
+                inetAddress = null;
+            }
+            this.localInetAddress = inetAddress;
+        }
+        if (remoteInetAddress != null) {
+            this.remoteInetAddress = remoteInetAddress;
+        } else {
+            InetAddress inetAddress;
+            try {
+                inetAddress = InetAddress.getByName(remoteAddr);
+            } catch (UnknownHostException e) {
+                inetAddress = null;
+            }
+            this.remoteInetAddress = inetAddress;
+        }
         this.debugContext = debugContext;
 
         if (container != null) {
@@ -763,8 +785,87 @@ public class TyrusSession implements Session, DistributedSession {
      * @return a {@link String} containing the IP address of the client that sent the request or {@code null} when
      * method is called on client-side.
      */
+    public InetAddress getRemoteInetAddress() {
+        return remoteInetAddress;
+    }
+
+    /**
+     * Get the Internet Protocol (IP) address of the client (or last proxy that sent the request) or of the server depending on whether it is called
+     * on server-side or client-side.
+     *
+     * @return a {@link String} containing the IP address of the client that sent the request when called on server-side
+     * or the IP address of the server when called on client-side.
+     * @see InetAddress#getHostAddress()
+     */
     public String getRemoteAddr() {
         return remoteAddr;
+    }
+
+    /**
+     * Get the hostname of the client (or last proxy that sent the request) or of the server depending on whether it is called on server-side or client-side.
+     *
+     * @return a {@link String} containing the hostname of the client that sent the request when called on server-side
+     * or the hostname of the server when called on client-side.
+     * @see InetSocketAddress#getHostName()
+     */
+    public String getRemoteHostName() {
+        return remoteHostName;
+    }
+
+    /**
+     * Get the port number of the client (or last proxy that sent the request) or of the server depending on whether
+     * it is called on server-side or client-side.
+     *
+     * @return a {@link Integer} containing the port of the client that sent the request when called on server-side
+     * or the port of the server when called on client-side.
+     * @see InetSocketAddress#getPort()
+     */
+    public Integer getRemotePort() {
+        return remotePort;
+    }
+
+    /**
+     * Get {@link InetAddress} instance representing an address of the client or of the server depending on whether
+     * it is called on client-side or server-side.
+     *
+     * @return an {@link InetAddress} instance representing an address of the client that sent the request when called
+     * on client-side or an address of the server when called on client-side.
+     */
+    public InetAddress getLocalInetAddress() {
+        return localInetAddress;
+    }
+
+    /**
+     * Get the Internet Protocol (IP) address of the client or of the server depending on whether it is called on client-side or server-side.
+     *
+     * @return a {@link String} containing the IP address of the client that sent the request when called on client-side
+     * or the IP address of the server when called on server-side.
+     * @see InetAddress#getHostAddress()
+     */
+    public String getLocalAddr() {
+        return localAddr;
+    }
+
+    /**
+     * Get the hostname of the client or of the server depending on whether it is called on client-side or server-side.
+     *
+     * @return a {@link String} containing the hostname of the client that sent the request when called on client-side
+     * or the hostname of the server when called on server-side.
+     * @see InetSocketAddress#getHostName()
+     */
+    public String getLocalHostName() {
+        return localHostName;
+    }
+
+    /**
+     * Get the port number of the client or of the server depending on whether it is called on client-side or server-side.
+     *
+     * @return a {@link Integer} containing the port of the client that sent the request when called on client-side
+     * or the port of the server when called on server-side.
+     * @see InetSocketAddress#getPort()
+     */
+    public Integer getLocalPort() {
+        return localPort;
     }
 
     /**
