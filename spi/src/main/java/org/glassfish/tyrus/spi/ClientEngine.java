@@ -39,7 +39,6 @@
  */
 package org.glassfish.tyrus.spi;
 
-import java.net.InetAddress;
 import java.util.Map;
 
 /**
@@ -121,70 +120,6 @@ public interface ClientEngine {
     public interface ClientUpgradeInfo {
 
         /**
-         * The name of property containing an {@link InetAddress} object representing an address of the server.
-         * <p/>
-         * An expected value is {@link InetAddress}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String REMOTE_INET_ADDRESS = "org.glassfish.tyrus.client.spi.remoteInetAddress";
-
-        /**
-         * The name of property containing an IP address of the server.
-         * <p/>
-         * An expected value is {@link String}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String REMOTE_ADDR = "org.glassfish.tyrus.client.spi.remoteAddr";
-
-        /**
-         * The name of property containing a hostname of the server.
-         * <p/>
-         * An expected value is {@link String}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String REMOTE_HOSTNAME = "org.glassfish.tyrus.client.spi.remoteHostName";
-
-        /**
-         * The name of property containing a port number of the server.
-         * <p/>
-         * An expected value is {@link Integer}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String REMOTE_PORT = "org.glassfish.tyrus.client.spi.remotePort";
-
-        /**
-         * The name of property containing an {@link InetAddress} object representing an address of the client.
-         * <p/>
-         * An expected value is {@link InetAddress}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String LOCAL_INET_ADDRESS = "org.glassfish.tyrus.client.spi.localInetAddress";
-
-        /**
-         * The name of property containing an IP address of the client.
-         * <p/>
-         * An expected value is {@link String}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String LOCAL_ADDR = "org.glassfish.tyrus.client.spi.localAddr";
-
-        /**
-         * The name of property containing a hostname of the client.
-         * <p/>
-         * An expected value is {@link String}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String LOCAL_HOSTNAME = "org.glassfish.tyrus.client.spi.localHostName";
-
-        /**
-         * The name of property containing a port number of the client.
-         * <p/>
-         * An expected value is {@link Integer}.
-         * Property can be passed in {@code connectionProperties} map (see {@link #createConnection(Map)}.
-         */
-        String LOCAL_PORT = "org.glassfish.tyrus.client.spi.localPort";
-
-        /**
          * Get {@link ClientUpgradeStatus}.
          *
          * @return {@link ClientUpgradeStatus}.
@@ -195,9 +130,26 @@ public interface ClientEngine {
          * Create new {@link Connection} when {@link #getUpgradeStatus()} returns {@link ClientUpgradeStatus#SUCCESS}.
          *
          * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
-         *                             Expected properties are {@link #REMOTE_INET_ADDRESS}, {@link #REMOTE_ADDR}, {@link #REMOTE_HOSTNAME},
-         *                             {@link #REMOTE_PORT}, {@link #LOCAL_INET_ADDRESS}, {@link #LOCAL_ADDR}, {@link #LOCAL_HOSTNAME}
-         *                             and {@link #LOCAL_PORT}.
+         *                             Required properties:
+         *                             <ul>
+         *                             <li>org.glassfish.tyrus.core.remoteAddr</li>
+         *                             <li>org.glassfish.tyrus.core.remoteHostName</li>
+         *                             <li>org.glassfish.tyrus.core.remotePort</li>
+         *                             <li>org.glassfish.tyrus.core.localAddr</li>
+         *                             <li>org.glassfish.tyrus.core.localHostName</li>
+         *                             <li>org.glassfish.tyrus.core.localPort</li>
+         *                             </ul>
+         *                             All supported properties:
+         *                             <ul>
+         *                             <li>org.glassfish.tyrus.core.remoteInetAddress</li>
+         *                             <li>org.glassfish.tyrus.core.remoteAddr</li>
+         *                             <li>org.glassfish.tyrus.core.remoteHostName</li>
+         *                             <li>org.glassfish.tyrus.core.remotePort</li>
+         *                             <li>org.glassfish.tyrus.core.localInetAddress</li>
+         *                             <li>org.glassfish.tyrus.core.localAddr</li>
+         *                             <li>org.glassfish.tyrus.core.localHostName</li>
+         *                             <li>org.glassfish.tyrus.core.localPort</li>
+         *                             </ul>
          *                             Unknown properties will be ignored.
          * @return new {@link Connection} instance or {@code null}, when {@link #getUpgradeStatus()} does not return
          * {@link ClientUpgradeStatus#}.

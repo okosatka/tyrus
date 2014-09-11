@@ -47,7 +47,6 @@ import java.nio.channels.AsynchronousChannelGroup;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
@@ -65,7 +64,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.glassfish.tyrus.client.ThreadPoolConfig;
-import org.glassfish.tyrus.spi.ClientEngine;
+import org.glassfish.tyrus.core.Utils;
 
 /**
  * Writes and reads data to and from a socket. Only one {@link #write(java.nio.ByteBuffer, org.glassfish.tyrus.spi.CompletionHandler)}
@@ -192,27 +191,16 @@ class TransportFilter extends Filter {
 
             @Override
             public void completed(Void result, Void nothing) {
-                final ByteBuffer inputBuffer = ByteBuffer.allocate(inputBufferSize);
-                Map<String, Object> connectionProperties = new HashMap<>(8);
+                Map<String, Object> connectionProperties;
                 try {
-                    InetSocketAddress localAddress = (InetSocketAddress) socketChannel.getLocalAddress();
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_INET_ADDRESS, localAddress.getAddress());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR, localAddress.getAddress().getHostAddress());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_HOSTNAME, localAddress.getHostName());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_PORT, localAddress.getPort());
+                    connectionProperties = Utils.getConnectionProperties(
+                            (InetSocketAddress) socketChannel.getLocalAddress(),
+                            (InetSocketAddress) socketChannel.getRemoteAddress());
                 } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_INET_ADDRESS, remoteAddress.getAddress());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR, remoteAddress.getAddress().getHostAddress());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_HOSTNAME, remoteAddress.getHostName());
-                    connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_PORT, remoteAddress.getPort());
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new IllegalStateException(e);
                 }
                 onConnect(connectionProperties);
+                final ByteBuffer inputBuffer = ByteBuffer.allocate(inputBufferSize);
                 _read(inputBuffer);
             }
 

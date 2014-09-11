@@ -41,7 +41,9 @@ package org.glassfish.tyrus.servlet;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,6 +69,7 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
 import org.glassfish.tyrus.core.RequestContext;
+import org.glassfish.tyrus.core.TyrusSession;
 import org.glassfish.tyrus.core.TyrusUpgradeResponse;
 import org.glassfish.tyrus.core.TyrusWebSocketEngine;
 import org.glassfish.tyrus.core.Utils;
@@ -176,8 +179,8 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
         }
 
         @Override
-        public void preInit(WebSocketEngine.UpgradeInfo upgradeInfo, Writer writer, boolean authenticated) {
-            handler.preInit(upgradeInfo, writer, authenticated);
+        public void preInit(WebSocketEngine.UpgradeInfo upgradeInfo, Writer writer, boolean authenticated, Map<String, Object> connectionProperties) {
+            handler.preInit(upgradeInfo, writer, authenticated, connectionProperties);
         }
 
         @Override
@@ -222,12 +225,6 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
                         }
                     })
                     .parameterMap(httpServletRequest.getParameterMap())
-                    .remoteAddr(httpServletRequest.getRemoteAddr())
-                    .remoteHost(httpServletRequest.getRemoteHost())
-                    .remotePort(httpServletRequest.getRemotePort())
-                    .localAddr(httpServletRequest.getLocalAddr())
-                    .localName(httpServletRequest.getLocalName())
-                    .localPort(httpServletRequest.getLocalPort())
                     .build();
 
             Enumeration<String> headerNames = httpServletRequest.getHeaderNames();
@@ -268,7 +265,15 @@ class TyrusServletFilter implements Filter, HttpSessionListener {
                         handler.setIncomingBufferSize(Integer.parseInt(frameBufferSize));
                     }
 
-                    handler.preInit(upgradeInfo, webSocketConnection, httpServletRequest.getUserPrincipal() != null);
+                    Map<String, Object> connectionProperties = new HashMap<>(6);
+                    connectionProperties.put(TyrusSession.REMOTE_ADDR, httpServletRequest.getRemoteAddr());
+                    connectionProperties.put(TyrusSession.REMOTE_HOSTNAME, httpServletRequest.getRemoteHost());
+                    connectionProperties.put(TyrusSession.REMOTE_PORT, httpServletRequest.getRemotePort());
+                    connectionProperties.put(TyrusSession.LOCAL_ADDR, httpServletRequest.getLocalAddr());
+                    connectionProperties.put(TyrusSession.LOCAL_HOSTNAME, httpServletRequest.getLocalName());
+                    connectionProperties.put(TyrusSession.LOCAL_PORT, httpServletRequest.getLocalPort());
+
+                    handler.preInit(upgradeInfo, webSocketConnection, httpServletRequest.getUserPrincipal() != null, Collections.unmodifiableMap(connectionProperties));
 
                     if (requestContext.getHttpSession() != null) {
                         sessionToHandler.put((HttpSession) requestContext.getHttpSession(), handler);

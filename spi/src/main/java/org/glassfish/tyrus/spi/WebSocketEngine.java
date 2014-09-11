@@ -39,6 +39,8 @@
  */
 package org.glassfish.tyrus.spi;
 
+import java.util.Map;
+
 import javax.websocket.DeploymentException;
 import javax.websocket.server.ServerEndpointConfig;
 
@@ -86,14 +88,16 @@ public interface WebSocketEngine {
          * onConnect lifecycle method on the endpoint during the invocation
          * of this method.
          *
-         * @param writer        transport writer that actually writes tyrus websocket
-         *                      data to underlying connection.
-         * @param closeListener transport listener for receiving tyrus close
-         *                      notifications.
+         * @param writer               transport writer that actually writes tyrus websocket
+         *                             data to underlying connection.
+         * @param closeListener        transport listener for receiving tyrus close
+         *                             notifications.
+         * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
+         *                             Unknown properties will be ignored.
          * @return upgraded connection if the upgrade is successful
-         *         otherwise null.
+         * otherwise null.
          */
-        Connection createConnection(Writer writer, CloseListener closeListener);
+        Connection createConnection(Writer writer, CloseListener closeListener, Map<String, Object> connectionProperties);
     }
 
     /**

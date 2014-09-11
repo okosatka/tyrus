@@ -69,19 +69,20 @@ import javax.json.JsonObject;
 import org.glassfish.tyrus.core.TyrusSession;
 import org.glassfish.tyrus.core.coder.CoderAdapter;
 import org.glassfish.tyrus.server.Server;
-import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 
 /**
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
+@Ignore
 public class SessionInfoTest extends TestContainer {
 
-    @ServerEndpoint(value = "/info")
-    public static class EchoEndpoint {
+    @ServerEndpoint(value = "/session-info-check")
+    public static class ServerSessionInfoEndpoint {
         @OnOpen
         public void onOpen(Session session) throws IOException {
             session.getBasicRemote().sendText("onOpen");
@@ -100,10 +101,11 @@ public class SessionInfoTest extends TestContainer {
 
     @Test
     public void testSessionInfoNotNull() throws DeploymentException {
-        Server server = startServer(EchoEndpoint.class);
+        Server server = startServer(ServerSessionInfoEndpoint.class);
 
-        final CountDownLatch infoOnClientLatch = new CountDownLatch(1);
-        final CountDownLatch infoOnServerLatch = new CountDownLatch(1);
+        final CountDownLatch infoNotNullOnClientLatch = new CountDownLatch(1);
+        final CountDownLatch infoNotNullOnServerLatch = new CountDownLatch(1);
+        final CountDownLatch infoInetAddressClientLatch = new CountDownLatch(1);
 
         try {
             final ClientEndpointConfig cec = ClientEndpointConfig.Builder.create().build();
@@ -114,30 +116,35 @@ public class SessionInfoTest extends TestContainer {
                 public void onOpen(Session session, EndpointConfig config) {
                     TyrusSession tyrusSession = (TyrusSession) session;
 
-                    if (checkSessionInfoNotNull(tyrusSession)) {
-                        infoOnClientLatch.countDown();
-                        try {
-                            session.getBasicRemote().sendText("get info");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
                     printSessionInfo(tyrusSession, "CLIENT");
 
+                    if (checkSessionInfoNotNull(tyrusSession)) {
+                        infoNotNullOnClientLatch.countDown();
+                    }
+                    if (checkSessionInfoInetAddress(tyrusSession)) {
+                        infoInetAddressClientLatch.countDown();
+                    }
+
+                    try {
+                        session.getBasicRemote().sendText("get info");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     session.addMessageHandler(new MessageHandler.Whole<String>() {
                         @Override
                         public void onMessage(String s) {
                             System.out.println(s);
                             if (s.equals("true")) {
-                                infoOnServerLatch.countDown();
+                                infoNotNullOnServerLatch.countDown();
                             }
                         }
                     });
                 }
-            }, cec, getURI(EchoEndpoint.class));
+            }, cec, getURI(ServerSessionInfoEndpoint.class));
 
-            assertTrue("Tyrus session info is missing on client-side", infoOnClientLatch.await(1, TimeUnit.SECONDS));
-            assertTrue("Tyrus session info is missing on server-side", infoOnServerLatch.await(1, TimeUnit.SECONDS));
+            assertTrue("Tyrus session info is missing on client-side", infoNotNullOnClientLatch.await(1, TimeUnit.SECONDS));
+            assertTrue("Tyrus session info InetAddress fields should have the same IP address as local/remoteAddress", infoInetAddressClientLatch.await(1, TimeUnit.SECONDS));
+            assertTrue("Tyrus session info is missing on server-side", infoNotNullOnServerLatch.await(1, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getMessage(), e);
@@ -146,16 +153,18 @@ public class SessionInfoTest extends TestContainer {
         }
     }
 
-    @ServerEndpoint(value = "/cross-check", encoders = {JsonEncoder.class})
-    public static class JsonEndpoint {
+    @ServerEndpoint(value = "/session-info-cross-check", encoders = {JsonEncoder.class})
+    public static class SessionInfoCrossCheckEndpoint {
         @OnOpen
         public void onOpen(Session session) throws IOException, EncodeException {
             TyrusSession tyrusSession = (TyrusSession) session;
             printSessionInfo(tyrusSession, "SERVER");
-            JsonObject jsonObject = Json.createObjectBuilder().add(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR, tyrusSession.getLocalAddr())
-                    .add(ClientEngine.ClientUpgradeInfo.LOCAL_PORT, tyrusSession.getLocalPort())
-                    .add(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR, tyrusSession.getRemoteAddr())
-                    .add(ClientEngine.ClientUpgradeInfo.REMOTE_PORT, tyrusSession.getRemotePort()).build();
+            JsonObject jsonObject = Json.createObjectBuilder()
+                    .add(TyrusSession.LOCAL_ADDR, tyrusSession.getLocalAddr())
+                    .add(TyrusSession.LOCAL_PORT, tyrusSession.getLocalPort())
+                    .add(TyrusSession.REMOTE_ADDR, tyrusSession.getRemoteAddr())
+                    .add(TyrusSession.REMOTE_PORT, tyrusSession.getRemotePort())
+                    .build();
             System.out.println(jsonObject);
             session.getBasicRemote().sendObject(jsonObject);
         }
@@ -163,7 +172,7 @@ public class SessionInfoTest extends TestContainer {
 
     @Test
     public void testCrossCheck() throws DeploymentException {
-        Server server = startServer(JsonEndpoint.class);
+        Server server = startServer(SessionInfoCrossCheckEndpoint.class);
 
         final CountDownLatch crossCheckPortLatch = new CountDownLatch(1);
         final CountDownLatch crossCheckIPAdressLatch = new CountDownLatch(1);
@@ -182,18 +191,18 @@ public class SessionInfoTest extends TestContainer {
                     session.addMessageHandler(new MessageHandler.Whole<JsonObject>() {
                         @Override
                         public void onMessage(JsonObject info) {
-                            if (info.getString(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR).equals(tyrusSession.getRemoteAddr())
-                                    && info.getString(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR).equals(tyrusSession.getLocalAddr())) {
+                            if (info.getString(TyrusSession.LOCAL_ADDR).equals(tyrusSession.getRemoteAddr())
+                                    && info.getString(TyrusSession.REMOTE_ADDR).equals(tyrusSession.getLocalAddr())) {
                                 crossCheckIPAdressLatch.countDown();
                             }
-                            if (info.getInt(ClientEngine.ClientUpgradeInfo.LOCAL_PORT) == tyrusSession.getRemotePort()
-                                    && info.getInt(ClientEngine.ClientUpgradeInfo.REMOTE_PORT) == tyrusSession.getLocalPort()) {
+                            if (info.getInt(TyrusSession.LOCAL_PORT) == tyrusSession.getRemotePort()
+                                    && info.getInt(TyrusSession.REMOTE_PORT) == tyrusSession.getLocalPort()) {
                                 crossCheckPortLatch.countDown();
                             }
                         }
                     });
                 }
-            }, cec, getURI(JsonEndpoint.class));
+            }, cec, getURI(SessionInfoCrossCheckEndpoint.class));
 
             assertTrue("Remote vs local IP addresses on server and client do not fit", crossCheckIPAdressLatch.await(1, TimeUnit.SECONDS));
             assertTrue("Remote vs local port numbers on server and client do not fit", crossCheckPortLatch.await(1, TimeUnit.SECONDS));
@@ -206,20 +215,21 @@ public class SessionInfoTest extends TestContainer {
     }
 
     private static boolean checkSessionInfoNotNull(TyrusSession tyrusSession) {
-        return (tyrusSession.getRemoteInetAddress() != null && tyrusSession.getRemoteAddr() != null
-                && tyrusSession.getRemoteHostName() != null && tyrusSession.getRemotePort() != -1
-                && tyrusSession.getLocalInetAddress() != null && tyrusSession.getLocalAddr() != null
-                && tyrusSession.getLocalHostName() != null && tyrusSession.getLocalPort() != -1);
+        return (tyrusSession.getRemoteInetAddress() != null && tyrusSession.getRemoteAddr() != null && tyrusSession.getRemoteHostName() != null
+                && tyrusSession.getLocalInetAddress() != null && tyrusSession.getLocalAddr() != null && tyrusSession.getLocalHostName() != null);
+    }
+
+    private static boolean checkSessionInfoInetAddress(TyrusSession tyrusSession) {
+        return (tyrusSession.getRemoteInetAddress() != null && tyrusSession.getRemoteInetAddress().getHostAddress().equals(tyrusSession.getRemoteAddr())
+                && tyrusSession.getLocalInetAddress() != null && tyrusSession.getLocalInetAddress().getHostAddress().equals(tyrusSession.getLocalAddr()));
     }
 
     private static void printSessionInfo(TyrusSession tyrusSession, String prefix) {
         InetAddress remoteInetAddress = tyrusSession.getRemoteInetAddress();
-        System.out.println(prefix + " remoteInetAddress.getAddress(): " + remoteInetAddress.getHostAddress());
         System.out.println(prefix + " remoteAddr: " + tyrusSession.getRemoteAddr());
         System.out.println(prefix + " remoteHost: " + tyrusSession.getRemoteHostName());
         System.out.println(prefix + " remotePort: " + tyrusSession.getRemotePort());
         InetAddress localInetAddress = tyrusSession.getLocalInetAddress();
-        System.out.println(prefix + " localInetAddress.getHostAddress(): " + localInetAddress.getHostAddress());
         System.out.println(prefix + " localAddr: " + tyrusSession.getLocalAddr());
         System.out.println(prefix + " localName: " + tyrusSession.getLocalHostName());
         System.out.println(prefix + " localPort: " + tyrusSession.getLocalPort());

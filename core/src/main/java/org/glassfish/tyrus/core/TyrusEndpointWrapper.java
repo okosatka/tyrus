@@ -102,7 +102,6 @@ import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.frame.TyrusFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
-import org.glassfish.tyrus.spi.ClientEngine;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
@@ -147,7 +146,7 @@ public class TyrusEndpointWrapper {
     private final Method onError;
     private final SessionListener sessionListener;
     private final EndpointEventListener endpointEventListener;
-    private final boolean parallelBroadcastEnabled;
+    private boolean parallelBroadcastEnabled;
 
     private final ClusterContext clusterContext;
 
@@ -592,24 +591,24 @@ public class TyrusEndpointWrapper {
     /**
      * Creates a Session based on the {@link TyrusWebSocket}, subprotocols and extensions.
      *
-     * @param socket       the other end of the connection.
-     * @param subprotocol  used.
-     * @param extensions   extensions used.
-     * @param connectionProperties TODO
-     * @param debugContext debug context.
+     * @param socket               the other end of the connection.
+     * @param subprotocol          used.
+     * @param extensions           extensions used.
+     * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
+     * @param debugContext         debug context.
      * @return {@link Session} representing the connection.
      */
     public TyrusSession createSessionForRemoteEndpoint(TyrusWebSocket socket, String subprotocol, List<Extension> extensions,
                                                        Map<String, Object> connectionProperties, DebugContext debugContext) {
 
-        final InetAddress remoteInetAddress = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.REMOTE_INET_ADDRESS, InetAddress.class);
-        final String remoteAddr = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.REMOTE_ADDR, String.class);
-        final String remoteHostName = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.REMOTE_HOSTNAME, String.class);
-        final Integer remotePort = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.REMOTE_PORT, Integer.class);
-        final InetAddress localInetAddress = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.LOCAL_INET_ADDRESS, InetAddress.class);
-        final String localAddr = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.LOCAL_ADDR, String.class);
-        final String localHostName = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.LOCAL_HOSTNAME, String.class);
-        final Integer localPort = Utils.getProperty(connectionProperties, ClientEngine.ClientUpgradeInfo.LOCAL_PORT, Integer.class);
+        final InetAddress remoteInetAddress = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_INET_ADDRESS, InetAddress.class);
+        final String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
+        final String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
+        final int remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
+        final InetAddress localInetAddress = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_INET_ADDRESS, InetAddress.class);
+        final String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
+        final String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
+        final int localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
 
         final TyrusSession session = new TyrusSession(container, socket, this, subprotocol, extensions, false,
                 getURI(contextPath, null), null, Collections.<String, String>emptyMap(), null, Collections.<String, List<String>>emptyMap(), null, null,
@@ -626,13 +625,18 @@ public class TyrusEndpointWrapper {
      * Called by the provider when the web socket connection
      * is established.
      *
-     * @param socket         {@link TyrusWebSocket} who has just connected to this web socket endpoint.
-     * @param upgradeRequest request associated with accepted connection.
-     * @param debugContext   debug context.
+     * @param socket               {@link TyrusWebSocket} who has just connected to this web socket endpoint.
+     * @param upgradeRequest       request associated with accepted connection.
+     * @param subProtocol          used subprotocol
+     * @param extensions           used extensions.
+     * @param connectionId         connection id obtained from request or response header {@value UpgradeRequest#CLUSTER_CONNECTION_ID_HEADER}.
+     * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
+     * @param debugContext         debug context.
      * @return Created {@link Session} instance or {@code null} when session was not created properly (max sessions
      * limit on endpoint or application or issues with endpoint validation).
      */
-    Session onConnect(TyrusWebSocket socket, UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId, DebugContext debugContext) {
+    Session onConnect(TyrusWebSocket socket, UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions,
+                      String connectionId, Map<String, Object> connectionProperties, DebugContext debugContext) {
         TyrusSession session = webSocketToSession.get(socket);
         // session is null on Server; client always has session instance at this point.
         if (session == null) {
@@ -642,14 +646,21 @@ public class TyrusEndpointWrapper {
                 templateValues.put(entry.getKey(), entry.getValue().get(0));
             }
 
-            final RequestContext requestContext = (RequestContext) upgradeRequest;
+            final InetAddress remoteInetAddress = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_INET_ADDRESS, InetAddress.class);
+            final String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
+            final String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
+            final int remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
+            final InetAddress localInetAddress = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_INET_ADDRESS, InetAddress.class);
+            final String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
+            final String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
+            final int localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
+
             // create a new session
             session = new TyrusSession(container, socket, this, subProtocol, extensions, upgradeRequest.isSecure(),
                     getURI(upgradeRequest.getRequestURI().toString(), upgradeRequest.getQueryString()),
                     upgradeRequest.getQueryString(), templateValues, upgradeRequest.getUserPrincipal(),
-                    upgradeRequest.getParameterMap(), clusterContext, connectionId, null,
-                    requestContext.getRemoteAddr(), requestContext.getRemoteHost(), requestContext.getRemotePort(), null,
-                    requestContext.getLocalAddr(), requestContext.getLocalName(), requestContext.getLocalPort(), debugContext);
+                    upgradeRequest.getParameterMap(), clusterContext, connectionId, remoteInetAddress,
+                    remoteAddr, remoteHostName, remotePort, localInetAddress, localAddr, localHostName, localPort, debugContext);
             webSocketToSession.put(socket, session);
 
             // max open session per endpoint exceeded?

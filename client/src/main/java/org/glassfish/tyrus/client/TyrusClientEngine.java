@@ -524,6 +524,10 @@ public class TyrusClientEngine implements ClientEngine {
             @Override
             public Connection createConnection(Map<String, Object> connectionProperties) {
 
+                if (!Utils.validateConnectionProperties(connectionProperties)) {
+                    throw new IllegalArgumentException("Connection properties does not contain all required properties or some of them has invalid value.");
+                }
+
                 final TyrusSession sessionForRemoteEndpoint = endpointWrapper.createSessionForRemoteEndpoint(
                         socket,
                         upgradeResponse.getFirstHeaderValue(HandshakeRequest.SEC_WEBSOCKET_PROTOCOL),
@@ -532,7 +536,7 @@ public class TyrusClientEngine implements ClientEngine {
                         debugContext);
 
                 // subprotocol and extensions are already set -- TODO: introduce new method (onClientConnect)?
-                socket.onConnect(TyrusClientEngine.this.clientHandShake.getRequest(), null, null, null, debugContext);
+                socket.onConnect(TyrusClientEngine.this.clientHandShake.getRequest(), null, null, null, connectionProperties, debugContext);
 
                 listener.onSessionCreated(sessionForRemoteEndpoint);
 

@@ -39,13 +39,17 @@
  */
 package org.glassfish.tyrus.core;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -534,5 +538,107 @@ public class Utils {
         }
         message.append(value);
         message.append("\n");
+    }
+
+    /**
+     * Create connection properties map with all supported entries. Data are collected from {@link InetSocketAddress}
+     * instances representing local and remote address.
+     *
+     * @param localAddress  local address.
+     * @param remoteAddress remote address.
+     * @return a map od connection properties with all supported entries.
+     */
+    public static Map<String, Object> getConnectionProperties(final InetSocketAddress localAddress, final InetSocketAddress remoteAddress) {
+        Map<String, Object> connectionProperties = new HashMap<String, Object>(8);
+        connectionProperties.put(TyrusSession.LOCAL_INET_ADDRESS, localAddress.getAddress());
+        connectionProperties.put(TyrusSession.LOCAL_ADDR, localAddress.getAddress().getHostAddress());
+        connectionProperties.put(TyrusSession.LOCAL_HOSTNAME, localAddress.getHostName());
+        connectionProperties.put(TyrusSession.LOCAL_PORT, localAddress.getPort());
+
+        connectionProperties.put(TyrusSession.REMOTE_INET_ADDRESS, remoteAddress.getAddress());
+        connectionProperties.put(TyrusSession.REMOTE_ADDR, remoteAddress.getAddress().getHostAddress());
+        connectionProperties.put(TyrusSession.REMOTE_HOSTNAME, remoteAddress.getHostName());
+        connectionProperties.put(TyrusSession.REMOTE_PORT, remoteAddress.getPort());
+        return Collections.unmodifiableMap(connectionProperties);
+    }
+
+    /**
+     * Validate connection properties.
+     * <p/>
+     * Method checks that all required properties are not {@code null} and/or are not empty or is different than required
+     * type.
+     * <p/>
+     * Required properties:
+     * <ul>
+     * <li>org.glassfish.tyrus.core.remoteAddr</li>
+     * <li>org.glassfish.tyrus.core.remoteHostName</li>
+     * <li>org.glassfish.tyrus.core.remotePort</li>
+     * <li>org.glassfish.tyrus.core.localAddr</li>
+     * <li>org.glassfish.tyrus.core.localHostName</li>
+     * <li>org.glassfish.tyrus.core.localPort</li>
+     * </ul>
+     * All supported properties:
+     * <ul>
+     * <li>org.glassfish.tyrus.core.remoteInetAddress</li>
+     * <li>org.glassfish.tyrus.core.remoteAddr</li>
+     * <li>org.glassfish.tyrus.core.remoteHostName</li>
+     * <li>org.glassfish.tyrus.core.remotePort</li>
+     * <li>org.glassfish.tyrus.core.localInetAddress</li>
+     * <li>org.glassfish.tyrus.core.localAddr</li>
+     * <li>org.glassfish.tyrus.core.localHostName</li>
+     * <li>org.glassfish.tyrus.core.localPort</li>
+     * </ul>
+     * Unknown properties will be ignored.
+     *
+     * @param connectionProperties connection properties map.
+     * @return {@code true} if all properties are not {@code null} and/or are not empty or are instances of required type.
+     */
+    public static boolean validateConnectionProperties(Map<String, Object> connectionProperties) {
+        boolean result = true;
+
+        try {
+            InetAddress inetAddress = (InetAddress) connectionProperties.get(TyrusSession.REMOTE_INET_ADDRESS);
+        } catch (ClassCastException e) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Must be instance of InetAddress.", TyrusSession.LOCAL_INET_ADDRESS));
+        }
+        try {
+            InetAddress inetAddress = (InetAddress) connectionProperties.get(TyrusSession.LOCAL_INET_ADDRESS);
+        } catch (ClassCastException e) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Must be instance of InetAddress.", TyrusSession.LOCAL_INET_ADDRESS));
+        }
+        String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
+        if (remoteAddr == null || remoteAddr.equals("")) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.REMOTE_ADDR));
+        }
+        String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
+        if (localAddr == null || localAddr.equals("")) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.LOCAL_ADDR));
+        }
+        String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
+        if (remoteHostName == null || remoteHostName.equals("")) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.REMOTE_HOSTNAME));
+        }
+        String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
+        if (localHostName == null || localHostName.equals("")) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.LOCAL_HOSTNAME));
+        }
+        Integer remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
+        if (remotePort == null || remotePort <= 0) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor negative number.", TyrusSession.REMOTE_PORT));
+        }
+        Integer localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
+        if (localPort == null || localPort <= 0) {
+            result = false;
+            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor negative number.", TyrusSession.LOCAL_PORT));
+        }
+
+        return result;
     }
 }

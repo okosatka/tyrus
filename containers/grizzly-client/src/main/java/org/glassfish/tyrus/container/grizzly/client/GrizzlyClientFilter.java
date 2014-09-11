@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -370,22 +369,9 @@ class GrizzlyClientFilter extends BaseFilter {
                 }
                 return ctx.getInvokeAction();
             case SUCCESS:
-                Map<String, Object> connectionProperties = new HashMap<String, Object>(8);
-
-                InetSocketAddress localAddress;
-                localAddress = (InetSocketAddress) ctx.getConnection().getLocalAddress();
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_INET_ADDRESS, localAddress.getAddress());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_ADDR, localAddress.getAddress().getHostAddress());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_HOSTNAME, localAddress.getHostName());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.LOCAL_PORT, localAddress.getPort());
-
-                InetSocketAddress remoteAddress;
-                remoteAddress = (InetSocketAddress) ctx.getAddress();
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_INET_ADDRESS, remoteAddress.getAddress());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_ADDR, remoteAddress.getAddress().getHostAddress());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_HOSTNAME, remoteAddress.getHostName());
-                connectionProperties.put(ClientEngine.ClientUpgradeInfo.REMOTE_PORT, remoteAddress.getPort());
-
+                Map<String, Object> connectionProperties = Utils.getConnectionProperties(
+                        (InetSocketAddress) ctx.getConnection().getLocalAddress(),
+                        (InetSocketAddress) ctx.getAddress());
                 tyrusConnection = clientUpgradeInfo.createConnection(connectionProperties);
                 break;
             default:

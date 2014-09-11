@@ -39,8 +39,6 @@
  */
 package org.glassfish.tyrus.core;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.Principal;
 import java.util.Arrays;
@@ -65,37 +63,23 @@ public final class RequestContext extends UpgradeRequest {
     private final boolean secure;
     private final Principal userPrincipal;
     private final Builder.IsUserInRoleDelegate isUserInRoleDelegate;
-    private final String remoteAddr;
-    private final String remoteHost;
-    private final int remotePort;
-    private final String localAddr;
-    private final String localName;
-    private final int localPort;
 
     private Map<String, List<String>> headers;
     private Map<String, List<String>> parameterMap;
 
-    private RequestContext(URI requestURI, String queryString,
-                           Object httpSession, boolean secure, Principal userPrincipal,
-                           Builder.IsUserInRoleDelegate IsUserInRoleDelegate, String remoteAddr,
-                           String remoteHost, int remotePort, String localAddr, String localName, int localPort,
-                           Map<String, List<String>> parameterMap, Map<String, List<String>> headers) {
+    private RequestContext(URI requestURI, String queryString, Object httpSession, boolean secure, Principal userPrincipal,
+                           Builder.IsUserInRoleDelegate IsUserInRoleDelegate, Map<String, List<String>> parameterMap,
+                           Map<String, List<String>> headers) {
         this.requestURI = requestURI;
         this.queryString = queryString;
         this.httpSession = httpSession;
         this.secure = secure;
         this.userPrincipal = userPrincipal;
         this.isUserInRoleDelegate = IsUserInRoleDelegate;
-        this.remoteAddr = remoteAddr;
-        this.remoteHost = remoteHost;
-        this.remotePort = remotePort;
-        this.localAddr = localAddr;
-        this.localName = localName;
-        this.localPort = localPort;
         this.parameterMap = parameterMap;
         this.headers = new TreeMap<String, List<String>>(String.CASE_INSENSITIVE_ORDER);
 
-        if(headers != null) {
+        if (headers != null) {
             this.headers.putAll(headers);
         }
     }
@@ -190,72 +174,6 @@ public final class RequestContext extends UpgradeRequest {
     }
 
     /**
-     * Get the Internet Protocol (IP) address of the client or last proxy that sent the request.
-     *
-     * @return a {@link String} containing the IP address of the client that sent the request or {@code null} when
-     * method is called on client-side.
-     * @see InetAddress#getHostAddress()
-     */
-    public String getRemoteAddr() {
-        return remoteAddr;
-    }
-
-    /**
-     * Get the hostname of the client or last proxy that sent the request.
-     *
-     * @return a {@link String} containing the hostname of the client that sent the request or {@code null} when
-     * method is called on client-side.
-     * @see InetSocketAddress#getHostName()
-     */
-    public String getRemoteHost() {
-        return remoteHost;
-    }
-
-    /**
-     * Get the port number of the client or last proxy that sent the request.
-     *
-     * @return a {@code int} containing the port of the client that sent the request or {@code null} when
-     * method is called on client-side.
-     * @see InetSocketAddress#getPort()
-     */
-    public int getRemotePort() {
-        return remotePort;
-    }
-
-    /**
-     * Get the Internet Protocol (IP) address of the server.
-     *
-     * @return a {@link String} containing the IP address of the server or {@code null} when
-     * method is called on client-side.
-     * @see InetAddress#getHostAddress()
-     */
-    public String getLocalAddr() {
-        return localAddr;
-    }
-
-    /**
-     * Get the hostname of the server.
-     *
-     * @return a {@link String} containing the hostname of the server or {@code null} when
-     * method is called on client-side.
-     * @see InetSocketAddress#getHostName()
-     */
-    public String getLocalName() {
-        return localName;
-    }
-
-    /**
-     * Get the port number of the server.
-     *
-     * @return a {@code int} containing the port of the server or {@code null} when
-     * method is called on client-side.
-     * @see InetSocketAddress#getPort()
-     */
-    public int getLocalPort() {
-        return localPort;
-    }
-
-    /**
      * {@link RequestContext} builder.
      */
     public static final class Builder {
@@ -267,14 +185,6 @@ public final class RequestContext extends UpgradeRequest {
         private Principal userPrincipal;
         private Builder.IsUserInRoleDelegate isUserInRoleDelegate;
         private Map<String, List<String>> parameterMap;
-        private InetAddress remoteInetAddress;
-        private String remoteAddr;
-        private String remoteHost;
-        private int remotePort;
-        private InetAddress localInetAddress;
-        private String localAddr;
-        private String localName;
-        private int localPort;
         private Map<String, List<String>> headers;
 
         /**
@@ -302,12 +212,6 @@ public final class RequestContext extends UpgradeRequest {
             builder.userPrincipal = requestContext.userPrincipal;
             builder.isUserInRoleDelegate = requestContext.isUserInRoleDelegate;
             builder.parameterMap = requestContext.parameterMap;
-            builder.remoteAddr = requestContext.remoteAddr;
-            builder.remoteHost = requestContext.remoteHost;
-            builder.remotePort = requestContext.remotePort;
-            builder.localAddr = requestContext.localAddr;
-            builder.localName = requestContext.localName;
-            builder.localPort = requestContext.localPort;
             builder.headers = requestContext.headers;
 
             return builder;
@@ -400,101 +304,12 @@ public final class RequestContext extends UpgradeRequest {
         }
 
         /**
-         * Set remote {@link InetAddress}.
-         *
-         * @param remoteInetAddress remote address to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder remoteInetAddress(InetAddress remoteInetAddress) {
-            this.remoteInetAddress = remoteInetAddress;
-            return this;
-        }
-
-        /**
-         * Set remote IP address.
-         *
-         * @param remoteAddr remote address to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder remoteAddr(String remoteAddr) {
-            this.remoteAddr = remoteAddr;
-            return this;
-        }
-
-        /**
-         * Set remote hostname.
-         *
-         * @param remoteHost remote hostname to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder remoteHost(String remoteHost) {
-            this.remoteHost = remoteHost;
-            return this;
-        }
-
-        /**
-         * Set remote port number.
-         *
-         * @param remotePort remote port to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder remotePort(int remotePort) {
-            this.remotePort = remotePort;
-            return this;
-        }
-
-        /**
-         * Set local {@link InetAddress}.
-         *
-         * @param localInetAddress local address to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder localInetAddress(InetAddress localInetAddress) {
-            this.localInetAddress = localInetAddress;
-            return this;
-        }
-
-        /**
-         * Set local IP address.
-         *
-         * @param localAddr local address to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder localAddr(String localAddr) {
-            this.localAddr = localAddr;
-            return this;
-        }
-
-        /**
-         * Set local hostname.
-         *
-         * @param localName local hostname to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder localName(String localName) {
-            this.localName = localName;
-            return this;
-        }
-
-        /**
-         * Set local port number.
-         *
-         * @param localPort local hostname to be set.
-         * @return updated {@link RequestContext.Builder} instance.
-         */
-        public Builder localPort(int localPort) {
-            this.localPort = localPort;
-            return this;
-        }
-
-        /**
          * Build {@link RequestContext} from given properties.
          *
          * @return created {@link RequestContext}.
          */
         public RequestContext build() {
-            return new RequestContext(requestURI, queryString, httpSession, secure,
-                    userPrincipal, isUserInRoleDelegate, remoteAddr, remoteHost, remotePort, localAddr, localName, localPort,
+            return new RequestContext(requestURI, queryString, httpSession, secure, userPrincipal, isUserInRoleDelegate,
                     parameterMap != null ? parameterMap : new HashMap<String, List<String>>(), headers);
         }
 

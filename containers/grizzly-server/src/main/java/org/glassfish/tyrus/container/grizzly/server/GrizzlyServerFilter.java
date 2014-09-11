@@ -244,12 +244,18 @@ class GrizzlyServerFilter extends BaseFilter {
                 final Connection grizzlyConnection = ctx.getConnection();
                 write(ctx, upgradeRequest, upgradeResponse);
 
-                final org.glassfish.tyrus.spi.Connection connection = upgradeInfo.createConnection(new GrizzlyWriter(ctx.getConnection()), new org.glassfish.tyrus.spi.Connection.CloseListener() {
-                    @Override
-                    public void close(CloseReason reason) {
-                        grizzlyConnection.close();
-                    }
-                });
+                Map<String, Object> connectionProperties = Utils.getConnectionProperties(
+                        (InetSocketAddress) ctx.getConnection().getLocalAddress(),
+                        (InetSocketAddress) ctx.getConnection().getPeerAddress());
+
+                final org.glassfish.tyrus.spi.Connection connection = upgradeInfo.createConnection(new GrizzlyWriter(ctx.getConnection()),
+                        new org.glassfish.tyrus.spi.Connection.CloseListener() {
+                            @Override
+                            public void close(CloseReason reason) {
+                                grizzlyConnection.close();
+                            }
+                        },
+                        connectionProperties);
 
                 TYRUS_CONNECTION.set(grizzlyConnection, connection);
                 TASK_PROCESSOR.set(grizzlyConnection, new TaskProcessor());
@@ -313,14 +319,6 @@ class GrizzlyServerFilter extends BaseFilter {
                 .requestURI(URI.create(requestPacket.getRequestURI()))
                 .queryString(requestPacket.getQueryString())
                 .secure(requestPacket.isSecure())
-                .remoteInetAddress(((InetSocketAddress) requestPacket.getConnection().getPeerAddress()).getAddress())
-                .remoteAddr(requestPacket.getRemoteAddress())
-                .remoteHost(requestPacket.getRemoteHost())
-                .remotePort(requestPacket.getRemotePort())
-                .localInetAddress(((java.net.InetSocketAddress) requestPacket.getConnection().getLocalAddress()).getAddress())
-                .localAddr(requestPacket.getLocalAddress())
-                .localName(requestPacket.getLocalName())
-                .localPort(requestPacket.getLocalPort())
                 .build();
 
         for (String name : requestPacket.getHeaders().names()) {

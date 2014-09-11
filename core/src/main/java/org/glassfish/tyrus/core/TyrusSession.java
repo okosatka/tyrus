@@ -42,7 +42,6 @@ package org.glassfish.tyrus.core;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -78,6 +77,10 @@ import org.glassfish.tyrus.core.cluster.RemoteSession;
 import org.glassfish.tyrus.core.cluster.SessionEventListener;
 import org.glassfish.tyrus.core.coder.CoderWrapper;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.spi.ClientEngine;
+import org.glassfish.tyrus.spi.Connection;
+import org.glassfish.tyrus.spi.WebSocketEngine;
+import org.glassfish.tyrus.spi.Writer;
 
 /**
  * Implementation of the {@link Session}.
@@ -90,6 +93,87 @@ import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 public class TyrusSession implements Session, DistributedSession {
 
     private static final Logger LOGGER = Logger.getLogger(TyrusSession.class.getName());
+
+    /**
+     * The name of property containing an {@link InetAddress} instance representing a remote address.
+     * <p/>
+     * An expected value is {@link InetAddress}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String REMOTE_INET_ADDRESS = "org.glassfish.tyrus.core.remoteInetAddress";
+    /**
+     * The name of property containing a remote IP address.
+     * <p/>
+     * An expected value is non-empty {@link String}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String REMOTE_ADDR = "org.glassfish.tyrus.core.remoteAddr";
+    /**
+     * The name of property containing a remote hostname.
+     * <p/>
+     * An expected value is non-empty {@link String}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String REMOTE_HOSTNAME = "org.glassfish.tyrus.core.remoteHostName";
+    /**
+     * The name of property containing a remote port number.
+     * <p/>
+     * An expected value is {@link Integer} greater than 0.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String REMOTE_PORT = "org.glassfish.tyrus.core.remotePort";
+    /**
+     * The name of property containing an {@link InetAddress} instance representing a local address.
+     * <p/>
+     * An expected value is {@link InetAddress}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String LOCAL_INET_ADDRESS = "org.glassfish.tyrus.core.localInetAddress";
+    /**
+     * The name of property containing a local IP address.
+     * <p/>
+     * An expected value is non-empty {@link String}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String LOCAL_ADDR = "org.glassfish.tyrus.core.localAddr";
+    /**
+     * The name of property containing a local hostname.
+     * <p/>
+     * An expected value is non-empty {@link String}.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String LOCAL_HOSTNAME = "org.glassfish.tyrus.core.localHostName";
+    /**
+     * The name of property containing a local port number.
+     * <p/>
+     * An expected value is {@link Integer} greater than 0.
+     * Property should be passed in {@code connectionProperties} map.
+     *
+     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
+     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
+     */
+    public static final String LOCAL_PORT = "org.glassfish.tyrus.core.localPort";
 
     private final WebSocketContainer container;
     private final TyrusEndpointWrapper endpointWrapper;
@@ -114,11 +198,11 @@ public class TyrusSession implements Session, DistributedSession {
     private final InetAddress remoteInetAddress;
     private final String remoteAddr;
     private final String remoteHostName;
-    private final Integer remotePort;
+    private final int remotePort;
     private final InetAddress localInetAddress;
     private final String localAddr;
     private final String localHostName;
-    private final Integer localPort;
+    private final int localPort;
     private final DebugContext debugContext;
 
     private final Map<RemoteSession.DistributedMapKey, Object> distributedPropertyMap;
@@ -138,8 +222,8 @@ public class TyrusSession implements Session, DistributedSession {
                  String subprotocol, List<Extension> extensions, boolean isSecure, URI requestURI, String queryString, Map<String,
                  String> pathParameters, Principal principal, Map<String, List<String>> requestParameterMap,
                  final ClusterContext clusterContext, String connectionId, final InetAddress remoteInetAddress, final String remoteAddr,
-                 final String remoteHostName, final Integer remotePort, final InetAddress localInetAddress, final String localAddr,
-                 final String localHostName, final Integer localPort, DebugContext debugContext) {
+                 final String remoteHostName, final int remotePort, final InetAddress localInetAddress, final String localAddr,
+                 final String localHostName, final int localPort, DebugContext debugContext) {
         this.container = container;
         this.endpointWrapper = endpointWrapper;
         this.negotiatedExtensions = extensions == null ? Collections.<Extension>emptyList() : Collections.unmodifiableList(extensions);
@@ -781,90 +865,76 @@ public class TyrusSession implements Session, DistributedSession {
 
     /**
      * Get the Internet Protocol (IP) address of the client or last proxy that sent the request.
+     * Get {@link InetAddress} instance representing a remote address.
      *
      * @return a {@link String} containing the IP address of the client that sent the request or {@code null} when
      * method is called on client-side.
+     * @return an {@link InetAddress} instance representing a remote address.
      */
     public InetAddress getRemoteInetAddress() {
         return remoteInetAddress;
     }
 
     /**
-     * Get the Internet Protocol (IP) address of the client (or last proxy that sent the request) or of the server depending on whether it is called
-     * on server-side or client-side.
+     * Get the remote Internet Protocol (IP) address (or last proxy that sent the request when called on server-side).
      *
-     * @return a {@link String} containing the IP address of the client that sent the request when called on server-side
-     * or the IP address of the server when called on client-side.
-     * @see InetAddress#getHostAddress()
+     * @return a {@link String} containing the remote IP address.
      */
     public String getRemoteAddr() {
         return remoteAddr;
     }
 
     /**
-     * Get the hostname of the client (or last proxy that sent the request) or of the server depending on whether it is called on server-side or client-side.
+     * Get the remote hostname (or hostname of the last proxy that sent the request when called on server-side).
      *
-     * @return a {@link String} containing the hostname of the client that sent the request when called on server-side
-     * or the hostname of the server when called on client-side.
-     * @see InetSocketAddress#getHostName()
+     * @return a {@link String} containing the remote hostname.
      */
     public String getRemoteHostName() {
         return remoteHostName;
     }
 
     /**
-     * Get the port number of the client (or last proxy that sent the request) or of the server depending on whether
-     * it is called on server-side or client-side.
+     * Get the remote port number (or port number of the last proxy that sent the request when called on server-side).
      *
-     * @return a {@link Integer} containing the port of the client that sent the request when called on server-side
-     * or the port of the server when called on client-side.
-     * @see InetSocketAddress#getPort()
+     * @return a {@link Integer} containing the port number.
      */
-    public Integer getRemotePort() {
+    public int getRemotePort() {
         return remotePort;
     }
 
     /**
-     * Get {@link InetAddress} instance representing an address of the client or of the server depending on whether
-     * it is called on client-side or server-side.
+     * Get {@link InetAddress} instance representing a local address.
      *
-     * @return an {@link InetAddress} instance representing an address of the client that sent the request when called
-     * on client-side or an address of the server when called on client-side.
+     * @return an {@link InetAddress} instance representing a local address.
      */
     public InetAddress getLocalInetAddress() {
         return localInetAddress;
     }
 
     /**
-     * Get the Internet Protocol (IP) address of the client or of the server depending on whether it is called on client-side or server-side.
+     * Get the local Internet Protocol (IP) address.
      *
-     * @return a {@link String} containing the IP address of the client that sent the request when called on client-side
-     * or the IP address of the server when called on server-side.
-     * @see InetAddress#getHostAddress()
+     * @return a {@link String} containing the local IP address.
      */
     public String getLocalAddr() {
         return localAddr;
     }
 
     /**
-     * Get the hostname of the client or of the server depending on whether it is called on client-side or server-side.
+     * Get the local hostname.
      *
-     * @return a {@link String} containing the hostname of the client that sent the request when called on client-side
-     * or the hostname of the server when called on server-side.
-     * @see InetSocketAddress#getHostName()
+     * @return a {@link String} containing the local hostname.
      */
     public String getLocalHostName() {
         return localHostName;
     }
 
     /**
-     * Get the port number of the client or of the server depending on whether it is called on client-side or server-side.
+     * Get the local port number.
      *
-     * @return a {@link Integer} containing the port of the client that sent the request when called on client-side
-     * or the port of the server when called on server-side.
-     * @see InetSocketAddress#getPort()
+     * @return a {@link Integer} containing the local port number.
      */
-    public Integer getLocalPort() {
+    public int getLocalPort() {
         return localPort;
     }
 
