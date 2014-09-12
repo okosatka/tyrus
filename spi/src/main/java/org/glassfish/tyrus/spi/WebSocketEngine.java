@@ -93,11 +93,10 @@ public interface WebSocketEngine {
          * @param closeListener        transport listener for receiving tyrus close
          *                             notifications.
          * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
-         *                             Unknown properties will be ignored.
          * @return upgraded connection if the upgrade is successful
          * otherwise null.
          */
-        Connection createConnection(Writer writer, CloseListener closeListener, Map<String, Object> connectionProperties);
+        Connection createConnection(Writer writer, CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties);
     }
 
     /**

@@ -369,7 +369,7 @@ class GrizzlyClientFilter extends BaseFilter {
                 }
                 return ctx.getInvokeAction();
             case SUCCESS:
-                Map<String, Object> connectionProperties = Utils.getConnectionProperties(
+                Map<org.glassfish.tyrus.spi.Connection.ConnectionPropertyKey, Object> connectionProperties = Utils.getConnectionProperties(
                         (InetSocketAddress) ctx.getConnection().getLocalAddress(),
                         (InetSocketAddress) ctx.getAddress());
                 tyrusConnection = clientUpgradeInfo.createConnection(connectionProperties);

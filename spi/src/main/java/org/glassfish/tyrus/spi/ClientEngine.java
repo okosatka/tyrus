@@ -132,29 +132,22 @@ public interface ClientEngine {
          * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
          *                             Required properties:
          *                             <ul>
-         *                             <li>org.glassfish.tyrus.core.remoteAddr</li>
-         *                             <li>org.glassfish.tyrus.core.remoteHostName</li>
-         *                             <li>org.glassfish.tyrus.core.remotePort</li>
-         *                             <li>org.glassfish.tyrus.core.localAddr</li>
-         *                             <li>org.glassfish.tyrus.core.localHostName</li>
-         *                             <li>org.glassfish.tyrus.core.localPort</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_ADDR}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_HOSTNAME}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_PORT}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_ADDR}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_HOSTNAME}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_PORT}</li>
          *                             </ul>
-         *                             All supported properties:
+         *                             Optional properties:
          *                             <ul>
-         *                             <li>org.glassfish.tyrus.core.remoteInetAddress</li>
-         *                             <li>org.glassfish.tyrus.core.remoteAddr</li>
-         *                             <li>org.glassfish.tyrus.core.remoteHostName</li>
-         *                             <li>org.glassfish.tyrus.core.remotePort</li>
-         *                             <li>org.glassfish.tyrus.core.localInetAddress</li>
-         *                             <li>org.glassfish.tyrus.core.localAddr</li>
-         *                             <li>org.glassfish.tyrus.core.localHostName</li>
-         *                             <li>org.glassfish.tyrus.core.localPort</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_INET_ADDRESS}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_INET_ADDRESS}</li>
          *                             </ul>
-         *                             Unknown properties will be ignored.
          * @return new {@link Connection} instance or {@code null}, when {@link #getUpgradeStatus()} does not return
          * {@link ClientUpgradeStatus#}.
          */
-        Connection createConnection(Map<String, Object> connectionProperties);
+        Connection createConnection(Map<Connection.ConnectionPropertyKey, Object> connectionProperties);
     }
 
     /**

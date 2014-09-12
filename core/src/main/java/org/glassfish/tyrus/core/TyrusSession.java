@@ -77,10 +77,6 @@ import org.glassfish.tyrus.core.cluster.RemoteSession;
 import org.glassfish.tyrus.core.cluster.SessionEventListener;
 import org.glassfish.tyrus.core.coder.CoderWrapper;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
-import org.glassfish.tyrus.spi.ClientEngine;
-import org.glassfish.tyrus.spi.Connection;
-import org.glassfish.tyrus.spi.WebSocketEngine;
-import org.glassfish.tyrus.spi.Writer;
 
 /**
  * Implementation of the {@link Session}.
@@ -93,87 +89,6 @@ import org.glassfish.tyrus.spi.Writer;
 public class TyrusSession implements Session, DistributedSession {
 
     private static final Logger LOGGER = Logger.getLogger(TyrusSession.class.getName());
-
-    /**
-     * The name of property containing an {@link InetAddress} instance representing a remote address.
-     * <p/>
-     * An expected value is {@link InetAddress}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String REMOTE_INET_ADDRESS = "org.glassfish.tyrus.core.remoteInetAddress";
-    /**
-     * The name of property containing a remote IP address.
-     * <p/>
-     * An expected value is non-empty {@link String}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String REMOTE_ADDR = "org.glassfish.tyrus.core.remoteAddr";
-    /**
-     * The name of property containing a remote hostname.
-     * <p/>
-     * An expected value is non-empty {@link String}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String REMOTE_HOSTNAME = "org.glassfish.tyrus.core.remoteHostName";
-    /**
-     * The name of property containing a remote port number.
-     * <p/>
-     * An expected value is {@link Integer} greater than 0.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String REMOTE_PORT = "org.glassfish.tyrus.core.remotePort";
-    /**
-     * The name of property containing an {@link InetAddress} instance representing a local address.
-     * <p/>
-     * An expected value is {@link InetAddress}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String LOCAL_INET_ADDRESS = "org.glassfish.tyrus.core.localInetAddress";
-    /**
-     * The name of property containing a local IP address.
-     * <p/>
-     * An expected value is non-empty {@link String}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String LOCAL_ADDR = "org.glassfish.tyrus.core.localAddr";
-    /**
-     * The name of property containing a local hostname.
-     * <p/>
-     * An expected value is non-empty {@link String}.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String LOCAL_HOSTNAME = "org.glassfish.tyrus.core.localHostName";
-    /**
-     * The name of property containing a local port number.
-     * <p/>
-     * An expected value is {@link Integer} greater than 0.
-     * Property should be passed in {@code connectionProperties} map.
-     *
-     * @see ClientEngine.ClientUpgradeInfo#createConnection(Map)
-     * @see WebSocketEngine.UpgradeInfo#createConnection(Writer, Connection.CloseListener, Map)
-     */
-    public static final String LOCAL_PORT = "org.glassfish.tyrus.core.localPort";
 
     private final WebSocketContainer container;
     private final TyrusEndpointWrapper endpointWrapper;
@@ -220,7 +135,7 @@ public class TyrusSession implements Session, DistributedSession {
 
     TyrusSession(WebSocketContainer container, TyrusWebSocket socket, TyrusEndpointWrapper endpointWrapper,
                  String subprotocol, List<Extension> extensions, boolean isSecure, URI requestURI, String queryString, Map<String,
-                 String> pathParameters, Principal principal, Map<String, List<String>> requestParameterMap,
+            String> pathParameters, Principal principal, Map<String, List<String>> requestParameterMap,
                  final ClusterContext clusterContext, String connectionId, final InetAddress remoteInetAddress, final String remoteAddr,
                  final String remoteHostName, final int remotePort, final InetAddress localInetAddress, final String localAddr,
                  final String localHostName, final int localPort, DebugContext debugContext) {

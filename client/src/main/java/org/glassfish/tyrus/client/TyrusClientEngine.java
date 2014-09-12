@@ -522,11 +522,9 @@ public class TyrusClientEngine implements ClientEngine {
             }
 
             @Override
-            public Connection createConnection(Map<String, Object> connectionProperties) {
+            public Connection createConnection(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
 
-                if (!Utils.validateConnectionProperties(connectionProperties)) {
-                    throw new IllegalArgumentException("Connection properties does not contain all required properties or some of them has invalid value.");
-                }
+                Utils.validateConnectionProperties(connectionProperties);
 
                 final TyrusSession sessionForRemoteEndpoint = endpointWrapper.createSessionForRemoteEndpoint(
                         socket,
@@ -694,7 +692,7 @@ public class TyrusClientEngine implements ClientEngine {
         }
 
         @Override
-        public Connection createConnection(Map<String, Object> connectionProperties) {
+        public Connection createConnection(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
             return null;
         }
     };
@@ -707,7 +705,7 @@ public class TyrusClientEngine implements ClientEngine {
         }
 
         @Override
-        public Connection createConnection(Map<String, Object> connectionProperties) {
+        public Connection createConnection(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
             return null;
         }
     };

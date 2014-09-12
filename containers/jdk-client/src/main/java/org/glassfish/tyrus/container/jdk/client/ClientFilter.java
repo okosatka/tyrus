@@ -87,7 +87,7 @@ class ClientFilter extends Filter {
     private volatile Connection wsConnection;
     private volatile boolean connectedToProxy = false;
     private volatile CompletionHandler<Void> connectCompletionHandler;
-    private Map<String, Object> connectionProperties;
+    private volatile Map<Connection.ConnectionPropertyKey, Object> connectionProperties;
 
     /**
      * Constructor.
@@ -120,7 +120,7 @@ class ClientFilter extends Filter {
     }
 
     @Override
-    public void processConnect(Map<String, Object> connectionProperties) {
+    public void processConnect(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
         this.connectionProperties = connectionProperties;
         final JdkUpgradeRequest handshakeUpgradeRequest;
 

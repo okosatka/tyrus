@@ -88,7 +88,7 @@ public class TyrusHttpUpgradeHandler implements HttpUpgradeHandler, ReadListener
     private Connection connection;
     private WebSocketEngine.UpgradeInfo upgradeInfo;
     private Writer writer;
-    private Map<String, Object> connectionProperties;
+    private Map<Connection.ConnectionPropertyKey, Object> connectionProperties;
 
 
     private boolean authenticated = false;
@@ -124,7 +124,7 @@ public class TyrusHttpUpgradeHandler implements HttpUpgradeHandler, ReadListener
         connectionLatch.countDown();
     }
 
-    public void preInit(WebSocketEngine.UpgradeInfo upgradeInfo, Writer writer, boolean authenticated, Map<String, Object> connectionProperties) {
+    public void preInit(WebSocketEngine.UpgradeInfo upgradeInfo, Writer writer, boolean authenticated, Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
         this.upgradeInfo = upgradeInfo;
         this.writer = writer;
         this.authenticated = authenticated;

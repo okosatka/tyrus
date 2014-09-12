@@ -58,6 +58,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
+import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
@@ -548,97 +549,116 @@ public class Utils {
      * @param remoteAddress remote address.
      * @return a map od connection properties with all supported entries.
      */
-    public static Map<String, Object> getConnectionProperties(final InetSocketAddress localAddress, final InetSocketAddress remoteAddress) {
-        Map<String, Object> connectionProperties = new HashMap<String, Object>(8);
-        connectionProperties.put(TyrusSession.LOCAL_INET_ADDRESS, localAddress.getAddress());
-        connectionProperties.put(TyrusSession.LOCAL_ADDR, localAddress.getAddress().getHostAddress());
-        connectionProperties.put(TyrusSession.LOCAL_HOSTNAME, localAddress.getHostName());
-        connectionProperties.put(TyrusSession.LOCAL_PORT, localAddress.getPort());
+    public static Map<Connection.ConnectionPropertyKey, Object> getConnectionProperties(final InetSocketAddress localAddress, final InetSocketAddress remoteAddress) {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = new HashMap<Connection.ConnectionPropertyKey, Object>(8);
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, localAddress.getAddress());
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_ADDR, localAddress.getAddress().getHostAddress());
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, localAddress.getHostName());
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_PORT, localAddress.getPort());
 
-        connectionProperties.put(TyrusSession.REMOTE_INET_ADDRESS, remoteAddress.getAddress());
-        connectionProperties.put(TyrusSession.REMOTE_ADDR, remoteAddress.getAddress().getHostAddress());
-        connectionProperties.put(TyrusSession.REMOTE_HOSTNAME, remoteAddress.getHostName());
-        connectionProperties.put(TyrusSession.REMOTE_PORT, remoteAddress.getPort());
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS, remoteAddress.getAddress());
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_ADDR, remoteAddress.getAddress().getHostAddress());
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME, remoteAddress.getHostName());
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_PORT, remoteAddress.getPort());
         return Collections.unmodifiableMap(connectionProperties);
     }
 
     /**
      * Validate connection properties.
      * <p/>
-     * Method checks that all required properties are not {@code null} and/or are not empty or is different than required
-     * type.
+     * Method checks that all required properties are not {@code null} and/or are not empty or are instance of required
+     * types.
      * <p/>
      * Required properties:
      * <ul>
-     * <li>org.glassfish.tyrus.core.remoteAddr</li>
-     * <li>org.glassfish.tyrus.core.remoteHostName</li>
-     * <li>org.glassfish.tyrus.core.remotePort</li>
-     * <li>org.glassfish.tyrus.core.localAddr</li>
-     * <li>org.glassfish.tyrus.core.localHostName</li>
-     * <li>org.glassfish.tyrus.core.localPort</li>
+     * <li>{@link Connection.ConnectionPropertyKey#REMOTE_ADDR}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#REMOTE_HOSTNAME}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#REMOTE_PORT}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#LOCAL_ADDR}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#LOCAL_HOSTNAME}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#LOCAL_PORT}</li>
      * </ul>
-     * All supported properties:
+     * Optional properties:
      * <ul>
-     * <li>org.glassfish.tyrus.core.remoteInetAddress</li>
-     * <li>org.glassfish.tyrus.core.remoteAddr</li>
-     * <li>org.glassfish.tyrus.core.remoteHostName</li>
-     * <li>org.glassfish.tyrus.core.remotePort</li>
-     * <li>org.glassfish.tyrus.core.localInetAddress</li>
-     * <li>org.glassfish.tyrus.core.localAddr</li>
-     * <li>org.glassfish.tyrus.core.localHostName</li>
-     * <li>org.glassfish.tyrus.core.localPort</li>
+     * <li>{@link Connection.ConnectionPropertyKey#REMOTE_INET_ADDRESS}</li>
+     * <li>{@link Connection.ConnectionPropertyKey#LOCAL_INET_ADDRESS}</li>
      * </ul>
-     * Unknown properties will be ignored.
      *
      * @param connectionProperties connection properties map.
-     * @return {@code true} if all properties are not {@code null} and/or are not empty or are instances of required type.
+     * @throws IllegalArgumentException if any of required properties is {@code null} or is empty or any of supported properties
+     *                                  is not an instance of required type.
      */
-    public static boolean validateConnectionProperties(Map<String, Object> connectionProperties) {
-        boolean result = true;
+    public static void validateConnectionProperties(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) throws IllegalArgumentException {
+        StringBuilder sb = new StringBuilder();
 
         try {
-            InetAddress inetAddress = (InetAddress) connectionProperties.get(TyrusSession.REMOTE_INET_ADDRESS);
+            InetAddress inetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
         } catch (ClassCastException e) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Must be instance of InetAddress.", TyrusSession.LOCAL_INET_ADDRESS));
-        }
-        try {
-            InetAddress inetAddress = (InetAddress) connectionProperties.get(TyrusSession.LOCAL_INET_ADDRESS);
-        } catch (ClassCastException e) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Must be instance of InetAddress.", TyrusSession.LOCAL_INET_ADDRESS));
-        }
-        String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
-        if (remoteAddr == null || remoteAddr.equals("")) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.REMOTE_ADDR));
-        }
-        String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
-        if (localAddr == null || localAddr.equals("")) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.LOCAL_ADDR));
-        }
-        String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
-        if (remoteHostName == null || remoteHostName.equals("")) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.REMOTE_HOSTNAME));
-        }
-        String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
-        if (localHostName == null || localHostName.equals("")) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor empty.", TyrusSession.LOCAL_HOSTNAME));
-        }
-        Integer remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
-        if (remotePort == null || remotePort <= 0) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor negative number.", TyrusSession.REMOTE_PORT));
-        }
-        Integer localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
-        if (localPort == null || localPort <= 0) {
-            result = false;
-            LOGGER.log(Level.INFO, String.format("Invalid property '%s'. Cannot be null nor negative number.", TyrusSession.LOCAL_PORT));
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of InetAddress.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS, e.getMessage()));
         }
 
-        return result;
+        try {
+            InetAddress inetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of InetAddress.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, e.getMessage()));
+        }
+
+        try {
+            String remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
+            if (remoteAddr == null || remoteAddr.equals("")) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.REMOTE_ADDR));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_ADDR, e.getMessage()));
+        }
+
+        try {
+            String localAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_ADDR);
+            if (localAddr == null || localAddr.equals("")) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.LOCAL_ADDR));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_ADDR, e.getMessage()));
+        }
+
+        try {
+            String remoteHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME);
+            if (remoteHostName == null || remoteHostName.equals("")) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.REMOTE_HOSTNAME));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_HOSTNAME, e.getMessage()));
+        }
+
+        try {
+            String localHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME);
+            if (localHostName == null || localHostName.equals("")) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.LOCAL_HOSTNAME));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, e.getMessage()));
+        }
+
+        try {
+            Integer remotePort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_PORT);
+            if (remotePort == null || remotePort <= 0) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or non-positive number.", Connection.ConnectionPropertyKey.REMOTE_PORT));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_PORT, e.getMessage()));
+        }
+
+        try {
+            Integer localPort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_PORT);
+            if (localPort == null || localPort <= 0) {
+                sb.append(String.format("Invalid connection property '%s'. Cannot be null or non-positive number.", Connection.ConnectionPropertyKey.LOCAL_PORT));
+            }
+        } catch (ClassCastException e) {
+            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of Integer.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_PORT, e.getMessage()));
+        }
+
+        if (sb.length() > 0) {
+            throw new IllegalArgumentException(sb.toString());
+        }
     }
 }

@@ -69,6 +69,7 @@ import javax.json.JsonObject;
 import org.glassfish.tyrus.core.TyrusSession;
 import org.glassfish.tyrus.core.coder.CoderAdapter;
 import org.glassfish.tyrus.server.Server;
+import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
 import org.junit.Ignore;
@@ -160,10 +161,10 @@ public class SessionInfoTest extends TestContainer {
             TyrusSession tyrusSession = (TyrusSession) session;
             printSessionInfo(tyrusSession, "SERVER");
             JsonObject jsonObject = Json.createObjectBuilder()
-                    .add(TyrusSession.LOCAL_ADDR, tyrusSession.getLocalAddr())
-                    .add(TyrusSession.LOCAL_PORT, tyrusSession.getLocalPort())
-                    .add(TyrusSession.REMOTE_ADDR, tyrusSession.getRemoteAddr())
-                    .add(TyrusSession.REMOTE_PORT, tyrusSession.getRemotePort())
+                    .add(Connection.ConnectionPropertyKey.LOCAL_ADDR.toString(), tyrusSession.getLocalAddr())
+                    .add(Connection.ConnectionPropertyKey.LOCAL_PORT.toString(), tyrusSession.getLocalPort())
+                    .add(Connection.ConnectionPropertyKey.REMOTE_ADDR.toString(), tyrusSession.getRemoteAddr())
+                    .add(Connection.ConnectionPropertyKey.REMOTE_PORT.toString(), tyrusSession.getRemotePort())
                     .build();
             System.out.println(jsonObject);
             session.getBasicRemote().sendObject(jsonObject);
@@ -191,12 +192,12 @@ public class SessionInfoTest extends TestContainer {
                     session.addMessageHandler(new MessageHandler.Whole<JsonObject>() {
                         @Override
                         public void onMessage(JsonObject info) {
-                            if (info.getString(TyrusSession.LOCAL_ADDR).equals(tyrusSession.getRemoteAddr())
-                                    && info.getString(TyrusSession.REMOTE_ADDR).equals(tyrusSession.getLocalAddr())) {
+                            if (info.getString(Connection.ConnectionPropertyKey.LOCAL_ADDR.toString()).equals(tyrusSession.getRemoteAddr())
+                                    && info.getString(Connection.ConnectionPropertyKey.REMOTE_ADDR.toString()).equals(tyrusSession.getLocalAddr())) {
                                 crossCheckIPAdressLatch.countDown();
                             }
-                            if (info.getInt(TyrusSession.LOCAL_PORT) == tyrusSession.getRemotePort()
-                                    && info.getInt(TyrusSession.REMOTE_PORT) == tyrusSession.getLocalPort()) {
+                            if (info.getInt(Connection.ConnectionPropertyKey.LOCAL_PORT.toString()) == tyrusSession.getRemotePort()
+                                    && info.getInt(Connection.ConnectionPropertyKey.REMOTE_PORT.toString()) == tyrusSession.getLocalPort()) {
                                 crossCheckPortLatch.countDown();
                             }
                         }

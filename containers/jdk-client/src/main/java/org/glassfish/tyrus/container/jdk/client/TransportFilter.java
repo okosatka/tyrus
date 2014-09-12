@@ -65,6 +65,7 @@ import java.util.logging.Logger;
 
 import org.glassfish.tyrus.client.ThreadPoolConfig;
 import org.glassfish.tyrus.core.Utils;
+import org.glassfish.tyrus.spi.Connection;
 
 /**
  * Writes and reads data to and from a socket. Only one {@link #write(java.nio.ByteBuffer, org.glassfish.tyrus.spi.CompletionHandler)}
@@ -191,7 +192,7 @@ class TransportFilter extends Filter {
 
             @Override
             public void completed(Void result, Void nothing) {
-                Map<String, Object> connectionProperties;
+                Map<Connection.ConnectionPropertyKey, Object> connectionProperties;
                 try {
                     connectionProperties = Utils.getConnectionProperties(
                             (InetSocketAddress) socketChannel.getLocalAddress(),

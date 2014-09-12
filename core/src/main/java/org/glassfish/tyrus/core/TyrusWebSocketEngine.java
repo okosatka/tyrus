@@ -663,7 +663,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
 
         @Override
-        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<String, Object> connectionProperties) {
+        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
             return null;
         }
     }
@@ -695,11 +695,9 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
 
         @Override
-        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<String, Object> connectionProperties) {
+        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
 
-            if (!Utils.validateConnectionProperties(connectionProperties)) {
-                throw new IllegalArgumentException("Connection properties does not contain all property or some of them has invalid value.");
-            }
+            Utils.validateConnectionProperties(connectionProperties);
 
             TyrusConnection tyrusConnection = new TyrusConnection(endpointWrapper, protocolHandler, incomingBufferSize, writer, closeListener, 
                     upgradeRequest, upgradeResponse, extensionContext, connectionProperties, debugContext);
@@ -744,8 +742,9 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         private final ExtendedExtension.ExtensionContext extensionContext;
         private final List<Extension> extensions;
 
-        TyrusConnection(TyrusEndpointWrapper endpointWrapper, ProtocolHandler protocolHandler, int incomingBufferSize, Writer writer, CloseListener closeListener,
-                        UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse, ExtendedExtension.ExtensionContext extensionContext, Map<String, Object> connectionProperties, DebugContext debugContext) {
+        TyrusConnection(TyrusEndpointWrapper endpointWrapper, ProtocolHandler protocolHandler, int incomingBufferSize, Writer writer,
+                        CloseListener closeListener, UpgradeRequest upgradeRequest, UpgradeResponse upgradeResponse,
+                        ExtendedExtension.ExtensionContext extensionContext, Map<ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
             protocolHandler.setWriter(writer);
             extensions = protocolHandler.getExtensions();
             this.socket = endpointWrapper.createSocket(protocolHandler);

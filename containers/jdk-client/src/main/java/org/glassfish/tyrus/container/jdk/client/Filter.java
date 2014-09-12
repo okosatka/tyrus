@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.glassfish.tyrus.spi.CompletionHandler;
+import org.glassfish.tyrus.spi.Connection;
 
 /**
  * A filter can add functionality to JDK client transport. Filters are composed together to
@@ -117,7 +118,7 @@ class Filter {
      *
      * @param connectionProperties connection related properties like local/remote IP addresses, port numbers and hostnames.
      */
-    final void onConnect(Map<String, Object> connectionProperties) {
+    final void onConnect(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
         processConnect(connectionProperties);
 
         if (upstreamFilter != null) {
@@ -202,7 +203,7 @@ class Filter {
      * @param connectionProperties connection related properties like local/remote IP addresses, port numbers and hostnames.
      * @see #onConnect(Map)
      */
-    void processConnect(Map<String, Object> connectionProperties) {
+    void processConnect(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
     }
 
     /**

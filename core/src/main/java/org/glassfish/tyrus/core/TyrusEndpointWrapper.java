@@ -102,6 +102,7 @@ import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.frame.TyrusFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.core.monitoring.EndpointEventListener;
+import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 import org.glassfish.tyrus.spi.UpgradeResponse;
 
@@ -601,14 +602,14 @@ public class TyrusEndpointWrapper {
     public TyrusSession createSessionForRemoteEndpoint(TyrusWebSocket socket, String subprotocol, List<Extension> extensions,
                                                        Map<String, Object> connectionProperties, DebugContext debugContext) {
 
-        final InetAddress remoteInetAddress = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_INET_ADDRESS, InetAddress.class);
-        final String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
-        final String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
-        final int remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
-        final InetAddress localInetAddress = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_INET_ADDRESS, InetAddress.class);
-        final String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
-        final String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
-        final int localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
+        final InetAddress remoteInetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
+        final String remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
+        final String remoteHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME);
+        final int remotePort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_PORT);
+        final InetAddress localInetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
+        final String localAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_ADDR);
+        final String localHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME);
+        final int localPort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_PORT);
 
         final TyrusSession session = new TyrusSession(container, socket, this, subprotocol, extensions, false,
                 getURI(contextPath, null), null, Collections.<String, String>emptyMap(), null, Collections.<String, List<String>>emptyMap(), null, null,
@@ -646,14 +647,14 @@ public class TyrusEndpointWrapper {
                 templateValues.put(entry.getKey(), entry.getValue().get(0));
             }
 
-            final InetAddress remoteInetAddress = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_INET_ADDRESS, InetAddress.class);
-            final String remoteAddr = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_ADDR, String.class);
-            final String remoteHostName = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_HOSTNAME, String.class);
-            final int remotePort = Utils.getProperty(connectionProperties, TyrusSession.REMOTE_PORT, Integer.class);
-            final InetAddress localInetAddress = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_INET_ADDRESS, InetAddress.class);
-            final String localAddr = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_ADDR, String.class);
-            final String localHostName = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_HOSTNAME, String.class);
-            final int localPort = Utils.getProperty(connectionProperties, TyrusSession.LOCAL_PORT, Integer.class);
+            final InetAddress remoteInetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
+            final String remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
+            final String remoteHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME);
+            final int remotePort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_PORT);
+            final InetAddress localInetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
+            final String localAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_ADDR);
+            final String localHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME);
+            final int localPort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_PORT);
 
             // create a new session
             session = new TyrusSession(container, socket, this, subProtocol, extensions, upgradeRequest.isSecure(),

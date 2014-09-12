@@ -61,6 +61,7 @@ import org.glassfish.tyrus.core.frame.TextFrame;
 import org.glassfish.tyrus.core.frame.TyrusFrame;
 import org.glassfish.tyrus.core.l10n.LocalizationMessages;
 import org.glassfish.tyrus.core.monitoring.MessageEventListener;
+import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.spi.UpgradeRequest;
 
 /**
@@ -138,7 +139,6 @@ public class TyrusWebSocket {
      * @param extensions           used extensions.
      * @param connectionId         connection id obtained from request or response header {@value UpgradeRequest#CLUSTER_CONNECTION_ID_HEADER}.
      * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
-     *                             Unknown properties will be ignored.
      */
     public void onConnect(UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId, Map<String, Object> connectionProperties, DebugContext debugContext) {
         state.set(State.CONNECTED);

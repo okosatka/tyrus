@@ -48,8 +48,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.glassfish.tyrus.spi.Connection;
+
 import org.junit.Test;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 /**
  * Tests Utils
@@ -100,79 +103,110 @@ public class UtilsTest {
 
     @Test
     public void testValidateConnectionProperties() throws UnknownHostException {
-        assertTrue(Utils.validateConnectionProperties(createValidConnectionProperties()));
+        try {
+            Utils.validateConnectionProperties(createValidConnectionProperties());
+        } catch (IllegalArgumentException e) {
+            fail();
+        }
     }
 
     @Test
     public void testValidateConnectionPropertiesInvalidInetAddress() throws UnknownHostException {
-        assertFalse(Utils.validateConnectionProperties(createConnectionPropertiesInvalidRemoteInetAddress()));
+        try {
+            Utils.validateConnectionProperties(createConnectionPropertiesInvalidRemoteInetAddress());
+            fail();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
     public void testValidateConnectionPropertiesMissingInetAddress() throws UnknownHostException {
-        assertTrue(Utils.validateConnectionProperties(createConnectionPropertiesMissingInetAddress()));
+        try {
+            Utils.validateConnectionProperties(createConnectionPropertiesMissingInetAddress());
+        } catch (IllegalArgumentException e) {
+            fail();
+        }
     }
 
     @Test
     public void testValidateConnectionPropertiesNullInetAddress() throws UnknownHostException {
-        assertTrue(Utils.validateConnectionProperties(createConnectionPropertiesNullInetAddress()));
+        try {
+            Utils.validateConnectionProperties(createConnectionPropertiesNullInetAddress());
+        } catch (IllegalArgumentException e) {
+            fail();
+        }
     }
 
     @Test
     public void testValidateConnectionPropertiesNullHostname() throws UnknownHostException {
-        assertFalse(Utils.validateConnectionProperties(createConnectionPropertiesNullHostname()));
+        try {
+            Utils.validateConnectionProperties(createConnectionPropertiesNullHostname());
+            fail();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
     public void testValidateConnectionPropertiesMissingPort() throws UnknownHostException {
-        assertFalse(Utils.validateConnectionProperties(createConnectionPropertiesMissingPort()));
+        try {
+            Utils.validateConnectionProperties(createConnectionPropertiesMissingPort());
+            fail();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
     }
 
-    private Map<String, Object> createValidConnectionProperties() throws UnknownHostException {
-        Map<String, Object> connectionProperties = new HashMap<String, Object>(8);
-        connectionProperties.put(TyrusSession.LOCAL_INET_ADDRESS, InetAddress.getByName("127.0.0.1"));
-        connectionProperties.put(TyrusSession.LOCAL_ADDR, "127.0.0.1");
-        connectionProperties.put(TyrusSession.LOCAL_HOSTNAME, "localhost");
-        connectionProperties.put(TyrusSession.LOCAL_PORT, 1);
-        connectionProperties.put(TyrusSession.REMOTE_INET_ADDRESS, InetAddress.getByName("127.0.0.1"));
-        connectionProperties.put(TyrusSession.REMOTE_ADDR, "127.0.0.1");
-        connectionProperties.put(TyrusSession.REMOTE_HOSTNAME, "localhost");
-        connectionProperties.put(TyrusSession.REMOTE_PORT, 1);
+    private Map<Connection.ConnectionPropertyKey, Object> createValidConnectionProperties() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = new HashMap<Connection.ConnectionPropertyKey, Object>(8);
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, InetAddress.getByName("127.0.0.1"));
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_ADDR, "127.0.0.1");
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, "localhost");
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_PORT, 1);
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS, InetAddress.getByName("127.0.0.1"));
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_ADDR, "127.0.0.1");
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME, "localhost");
+        connectionProperties.put(Connection.ConnectionPropertyKey.REMOTE_PORT, 1);
         return connectionProperties;
     }
 
-    private Map<String, Object> createConnectionPropertiesInvalidRemoteInetAddress() throws UnknownHostException {
-        Map<String, Object> connectionProperties = createValidConnectionProperties();
-        connectionProperties.put(TyrusSession.LOCAL_INET_ADDRESS, "127.0.0.1");
+    private Map<Connection.ConnectionPropertyKey, Object> createConnectionPropertiesInvalidRemoteInetAddress() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = createValidConnectionProperties();
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, "127.0.0.1");
         return connectionProperties;
     }
 
-    private Map<String, Object> createConnectionPropertiesNullHostname() throws UnknownHostException {
-        Map<String, Object> connectionProperties = createValidConnectionProperties();
-        connectionProperties.put(TyrusSession.LOCAL_HOSTNAME, null);
+    private Map<Connection.ConnectionPropertyKey, Object> createConnectionPropertiesNullHostname() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = createValidConnectionProperties();
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, null);
         return connectionProperties;
     }
 
-    private Map<String, Object> createConnectionPropertiesNullInetAddress() throws UnknownHostException {
-        Map<String, Object> connectionProperties = createValidConnectionProperties();
-        connectionProperties.put(TyrusSession.LOCAL_INET_ADDRESS, null);
+    private Map<Connection.ConnectionPropertyKey, Object> createConnectionPropertiesNullInetAddress() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = createValidConnectionProperties();
+        connectionProperties.put(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, null);
         return connectionProperties;
     }
 
-    private Map<String, Object> createConnectionPropertiesMissingInetAddress() throws UnknownHostException {
-        Map<String, Object> connectionProperties = createValidConnectionProperties();
-        connectionProperties.remove(TyrusSession.LOCAL_INET_ADDRESS);
+    private Map<Connection.ConnectionPropertyKey, Object> createConnectionPropertiesMissingInetAddress() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = createValidConnectionProperties();
+        connectionProperties.remove(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
         return connectionProperties;
     }
 
-    private Map<String, Object> createConnectionPropertiesMissingPort() throws UnknownHostException {
-        Map<String, Object> connectionProperties = createValidConnectionProperties();
-        connectionProperties.remove(TyrusSession.LOCAL_PORT);
+    private Map<Connection.ConnectionPropertyKey, Object> createConnectionPropertiesMissingPort() throws UnknownHostException {
+        Map<Connection.ConnectionPropertyKey, Object> connectionProperties = createValidConnectionProperties();
+        connectionProperties.remove(Connection.ConnectionPropertyKey.LOCAL_PORT);
         return connectionProperties;
     }
 
     @Test
     public void testCreateConnectionProperties() {
-        assertTrue(Utils.validateConnectionProperties(Utils.getConnectionProperties(new InetSocketAddress(8080), new InetSocketAddress(8080))));
+        try {
+            Utils.validateConnectionProperties(Utils.getConnectionProperties(new InetSocketAddress(8080), new InetSocketAddress(8080)));
+        } catch (IllegalArgumentException e) {
+            fail();
+        }
     }
 }
