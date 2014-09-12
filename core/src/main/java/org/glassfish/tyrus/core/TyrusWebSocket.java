@@ -139,8 +139,9 @@ public class TyrusWebSocket {
      * @param extensions           used extensions.
      * @param connectionId         connection id obtained from request or response header {@value UpgradeRequest#CLUSTER_CONNECTION_ID_HEADER}.
      * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
+     * @param debugContext         debug context.
      */
-    public void onConnect(UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId, Map<String, Object> connectionProperties, DebugContext debugContext) {
+    public void onConnect(UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions, String connectionId, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
         state.set(State.CONNECTED);
 
         if (endpointWrapper != null) {

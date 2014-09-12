@@ -600,7 +600,7 @@ public class TyrusEndpointWrapper {
      * @return {@link Session} representing the connection.
      */
     public TyrusSession createSessionForRemoteEndpoint(TyrusWebSocket socket, String subprotocol, List<Extension> extensions,
-                                                       Map<String, Object> connectionProperties, DebugContext debugContext) {
+                                                       Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
 
         final InetAddress remoteInetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
         final String remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
@@ -637,7 +637,7 @@ public class TyrusEndpointWrapper {
      * limit on endpoint or application or issues with endpoint validation).
      */
     Session onConnect(TyrusWebSocket socket, UpgradeRequest upgradeRequest, String subProtocol, List<Extension> extensions,
-                      String connectionId, Map<String, Object> connectionProperties, DebugContext debugContext) {
+                      String connectionId, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
         TyrusSession session = webSocketToSession.get(socket);
         // session is null on Server; client always has session instance at this point.
         if (session == null) {

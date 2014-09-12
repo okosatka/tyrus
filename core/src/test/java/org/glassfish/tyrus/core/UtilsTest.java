@@ -103,59 +103,32 @@ public class UtilsTest {
 
     @Test
     public void testValidateConnectionProperties() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createValidConnectionProperties());
-        } catch (IllegalArgumentException e) {
-            fail();
-        }
+        Utils.validateConnectionProperties(createValidConnectionProperties());
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testValidateConnectionPropertiesInvalidInetAddress() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createConnectionPropertiesInvalidRemoteInetAddress());
-            fail();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        }
+        Utils.validateConnectionProperties(createConnectionPropertiesInvalidRemoteInetAddress());
     }
 
     @Test
     public void testValidateConnectionPropertiesMissingInetAddress() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createConnectionPropertiesMissingInetAddress());
-        } catch (IllegalArgumentException e) {
-            fail();
-        }
+        Utils.validateConnectionProperties(createConnectionPropertiesMissingInetAddress());
     }
 
     @Test
     public void testValidateConnectionPropertiesNullInetAddress() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createConnectionPropertiesNullInetAddress());
-        } catch (IllegalArgumentException e) {
-            fail();
-        }
+        Utils.validateConnectionProperties(createConnectionPropertiesNullInetAddress());
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testValidateConnectionPropertiesNullHostname() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createConnectionPropertiesNullHostname());
-            fail();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        }
+        Utils.validateConnectionProperties(createConnectionPropertiesNullHostname());
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testValidateConnectionPropertiesMissingPort() throws UnknownHostException {
-        try {
-            Utils.validateConnectionProperties(createConnectionPropertiesMissingPort());
-            fail();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        }
+        Utils.validateConnectionProperties(createConnectionPropertiesMissingPort());
     }
 
     private Map<Connection.ConnectionPropertyKey, Object> createValidConnectionProperties() throws UnknownHostException {

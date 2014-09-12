@@ -663,7 +663,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
 
         @Override
-        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
+        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
             return null;
         }
     }
@@ -695,7 +695,7 @@ public class TyrusWebSocketEngine implements WebSocketEngine {
         }
 
         @Override
-        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties, DebugContext debugContext) {
+        public Connection createConnection(Writer writer, Connection.CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties) {
 
             Utils.validateConnectionProperties(connectionProperties);
 
