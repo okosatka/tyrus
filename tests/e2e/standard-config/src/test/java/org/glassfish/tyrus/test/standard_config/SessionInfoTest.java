@@ -72,14 +72,12 @@ import org.glassfish.tyrus.server.Server;
 import org.glassfish.tyrus.spi.Connection;
 import org.glassfish.tyrus.test.tools.TestContainer;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 
 /**
  * @author Ondrej Kosatka (ondrej.kosatka at oracle.com)
  */
-@Ignore
 public class SessionInfoTest extends TestContainer {
 
     @ServerEndpoint(value = "/session-info-check")
