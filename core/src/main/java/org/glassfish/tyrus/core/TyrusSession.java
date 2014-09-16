@@ -779,11 +779,8 @@ public class TyrusSession implements Session, DistributedSession {
     }
 
     /**
-     * Get the Internet Protocol (IP) address of the client or last proxy that sent the request.
      * Get {@link InetAddress} instance representing a remote address.
      *
-     * @return a {@link String} containing the IP address of the client that sent the request or {@code null} when
-     * method is called on client-side.
      * @return an {@link InetAddress} instance representing a remote address.
      */
     public InetAddress getRemoteInetAddress() {

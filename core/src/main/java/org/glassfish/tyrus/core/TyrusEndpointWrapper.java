@@ -147,7 +147,7 @@ public class TyrusEndpointWrapper {
     private final Method onError;
     private final SessionListener sessionListener;
     private final EndpointEventListener endpointEventListener;
-    private boolean parallelBroadcastEnabled;
+    private final boolean parallelBroadcastEnabled;
 
     private final ClusterContext clusterContext;
 
@@ -204,6 +204,12 @@ public class TyrusEndpointWrapper {
             this.endpointEventListener = endpointEventListener;
         } else {
             this.endpointEventListener = EndpointEventListener.NO_OP;
+        }
+
+        if (parallelBroadcastEnabled == null) {
+            this.parallelBroadcastEnabled = true;
+        } else {
+            this.parallelBroadcastEnabled = parallelBroadcastEnabled;
         }
 
         // server-side only
@@ -1103,6 +1109,8 @@ public class TyrusEndpointWrapper {
             LOGGER.log(Level.FINE, "Pong received on already closed connection.");
             return;
         }
+
+        session.getDebugContext().appendLogMessage(LOGGER, Level.FINEST, DebugContext.Type.MESSAGE_IN, "Received pong message");
 
         session.restartIdleTimeoutExecutor();
 

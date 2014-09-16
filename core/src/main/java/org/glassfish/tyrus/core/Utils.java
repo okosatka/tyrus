@@ -585,76 +585,80 @@ public class Utils {
      * </ul>
      *
      * @param connectionProperties connection properties map.
-     * @throws IllegalArgumentException if any of required properties is {@code null} or is empty or any of supported properties
-     *                                  is not an instance of required type.
+     * @throws IllegalArgumentException if any of required properties in connectionProperties is {@code null} or is empty
+     *                                  or any of supported properties is not an instance of required type.
      */
     public static void validateConnectionProperties(Map<Connection.ConnectionPropertyKey, Object> connectionProperties) throws IllegalArgumentException {
         StringBuilder sb = new StringBuilder();
 
-        try {
-            InetAddress inetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
-        } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of InetAddress.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS, e.getMessage()));
+        Object o = connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS);
+        if (o != null && !(o instanceof InetAddress)) {
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.REMOTE_INET_ADDRESS, InetAddress.class.getName(), o.getClass().getName())));
         }
 
-        try {
-            InetAddress inetAddress = (InetAddress) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
-        } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of InetAddress.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, e.getMessage()));
+        o = connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS);
+        if (o != null && !(o instanceof InetAddress)) {
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.LOCAL_INET_ADDRESS, InetAddress.class.getName(), o.getClass().getName())));
         }
 
+        String remoteAddr = null;
         try {
-            String remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
+            remoteAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_ADDR);
             if (remoteAddr == null || remoteAddr.equals("")) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.REMOTE_ADDR));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_NOT_EMPTY(Connection.ConnectionPropertyKey.REMOTE_ADDR)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_ADDR, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.REMOTE_ADDR, String.class.getName(), remoteAddr.getClass().getName()), e.getMessage()));
         }
 
+        String localAddr = null;
         try {
-            String localAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_ADDR);
+            localAddr = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_ADDR);
             if (localAddr == null || localAddr.equals("")) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.LOCAL_ADDR));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_NOT_EMPTY(Connection.ConnectionPropertyKey.LOCAL_ADDR)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_ADDR, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.LOCAL_ADDR, String.class.getName(), localAddr.getClass().getName()), e.getMessage()));
         }
 
+        String remoteHostName = null;
         try {
-            String remoteHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME);
+            remoteHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME);
             if (remoteHostName == null || remoteHostName.equals("")) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.REMOTE_HOSTNAME));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_NOT_EMPTY(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_HOSTNAME, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.REMOTE_HOSTNAME, String.class.getName(), remoteHostName.getClass().getName()), e.getMessage()));
         }
 
+        String localHostName = null;
         try {
-            String localHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME);
+            localHostName = (String) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME);
             if (localHostName == null || localHostName.equals("")) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or empty.", Connection.ConnectionPropertyKey.LOCAL_HOSTNAME));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_NOT_EMPTY(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.LOCAL_HOSTNAME, String.class.getName(), localHostName.getClass().getName()), e.getMessage()));
         }
 
+        Integer remotePort = null;
         try {
-            Integer remotePort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_PORT);
+            remotePort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.REMOTE_PORT);
             if (remotePort == null || remotePort <= 0) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or non-positive number.", Connection.ConnectionPropertyKey.REMOTE_PORT));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_POSITIVE_INTEGER(Connection.ConnectionPropertyKey.REMOTE_PORT)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of String.class. (%s)", Connection.ConnectionPropertyKey.REMOTE_PORT, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.REMOTE_PORT, Integer.class.getName(), remotePort.getClass().getName()), e.getMessage()));
         }
 
+        Integer localPort = null;
         try {
-            Integer localPort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_PORT);
+            localPort = (Integer) connectionProperties.get(Connection.ConnectionPropertyKey.LOCAL_PORT);
             if (localPort == null || localPort <= 0) {
-                sb.append(String.format("Invalid connection property '%s'. Cannot be null or non-positive number.", Connection.ConnectionPropertyKey.LOCAL_PORT));
+                sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_POSITIVE_INTEGER(Connection.ConnectionPropertyKey.LOCAL_PORT)));
             }
         } catch (ClassCastException e) {
-            sb.append(String.format("Invalid connection property '%s'. Property must be an instance of Integer.class. (%s)", Connection.ConnectionPropertyKey.LOCAL_PORT, e.getMessage()));
+            sb.append(String.format(LocalizationMessages.PROPERTY_VALIDATION_TYPE(Connection.ConnectionPropertyKey.LOCAL_PORT, Integer.class.getName(), localPort.getClass().getName()), e.getMessage()));
         }
 
         if (sb.length() > 0) {

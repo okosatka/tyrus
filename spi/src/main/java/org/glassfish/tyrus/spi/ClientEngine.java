@@ -145,7 +145,9 @@ public interface ClientEngine {
          *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_INET_ADDRESS}</li>
          *                             </ul>
          * @return new {@link Connection} instance or {@code null}, when {@link #getUpgradeStatus()} does not return
-         * {@link ClientUpgradeStatus#}.
+         * {@link ClientUpgradeStatus#SUCCESS}.
+         * @throws IllegalArgumentException if any of required properties in connectionProperties is {@code null} or is empty
+         *                                  or any of supported properties is not an instance of required type.
          */
         Connection createConnection(Map<Connection.ConnectionPropertyKey, Object> connectionProperties);
     }

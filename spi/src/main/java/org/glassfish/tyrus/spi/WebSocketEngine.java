@@ -93,8 +93,23 @@ public interface WebSocketEngine {
          * @param closeListener        transport listener for receiving tyrus close
          *                             notifications.
          * @param connectionProperties connection related properties like remote/local IP addresses, port numbers or hostnames.
-         * @return upgraded connection if the upgrade is successful
-         * otherwise null.
+         *                             Required properties:
+         *                             <ul>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_ADDR}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_HOSTNAME}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_PORT}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_ADDR}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_HOSTNAME}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_PORT}</li>
+         *                             </ul>
+         *                             Optional properties:
+         *                             <ul>
+         *                             <li>{@link Connection.ConnectionPropertyKey#REMOTE_INET_ADDRESS}</li>
+         *                             <li>{@link Connection.ConnectionPropertyKey#LOCAL_INET_ADDRESS}</li>
+         *                             </ul>
+         * @return upgraded connection if the upgrade is successful otherwise null.
+         * @throws IllegalArgumentException if any of required properties in connectionProperties is {@code null} or is empty
+         *                                  or any of supported properties is not an instance of required type.
          */
         Connection createConnection(Writer writer, CloseListener closeListener, Map<Connection.ConnectionPropertyKey, Object> connectionProperties);
     }
