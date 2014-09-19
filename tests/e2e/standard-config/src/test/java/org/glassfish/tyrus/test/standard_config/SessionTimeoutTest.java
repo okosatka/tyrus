@@ -78,13 +78,17 @@ public class SessionTimeoutTest extends TestContainer {
         @OnOpen
         public void onOpen(Session session) {
             session.setMaxIdleTimeout(TIMEOUT);
+            System.out.println("SessionTimeoutEndpoint checkpoint#1: " + System.currentTimeMillis());
         }
 
         @OnClose
         public void onClose(CloseReason closeReason) {
             //TYRUS-230
+            System.out.println("SessionTimeoutEndpoint checkpoint#2: " + System.currentTimeMillis());
             if (closeReason.getCloseCode() == CloseReason.CloseCodes.CLOSED_ABNORMALLY) {
                 onClosedCalled.countDown();
+            } else {
+                System.out.println("SessionTimeoutEndpoint close code: " + closeReason.getCloseCode().getCode());
             }
         }
     }
@@ -130,7 +134,7 @@ public class SessionTimeoutTest extends TestContainer {
         @OnMessage
         public String onMessage(String message) throws InterruptedException {
             if (message.equals("SessionTimeoutEndpoint")) {
-                if (SessionTimeoutEndpoint.onClosedCalled.await(1, TimeUnit.SECONDS)) {
+                if (SessionTimeoutEndpoint.onClosedCalled.await(3, TimeUnit.SECONDS)) {
                     return POSITIVE;
                 }
             } else if (message.equals("SessionNoTimeoutEndpoint")) {
@@ -140,6 +144,9 @@ public class SessionTimeoutTest extends TestContainer {
             } else if (message.equals("SessionTimeoutChangedEndpoint")) {
                 if (SessionTimeoutChangedEndpoint.latch.await(1, TimeUnit.SECONDS) && SessionTimeoutChangedEndpoint.closedNormally.get()) {
                     return POSITIVE;
+                } else {
+                    System.out.println("SessionTimeoutChangedEndpoint latch: " + SessionTimeoutChangedEndpoint.latch.getCount());
+                    System.out.println("SessionTimeoutChangedEndpoint closedNormally: " + SessionTimeoutChangedEndpoint.closedNormally.toString());
                 }
             }
 
@@ -250,7 +257,15 @@ public class SessionTimeoutTest extends TestContainer {
 
         @OnClose
         public void onClose() {
-            closedNormally.set(System.currentTimeMillis() - timeoutSetTime - TIMEOUT2 < 20);
+            final long currentTime = System.currentTimeMillis();
+            final boolean inTime = currentTime - timeoutSetTime - TIMEOUT2 < 50;
+            closedNormally.set(inTime);
+            if (!inTime) {
+                System.out.println("Limit exceeded: " + (currentTime - timeoutSetTime - TIMEOUT2));
+                System.out.println("currentTime: " + currentTime);
+                System.out.println("timeoutSetTime: " + timeoutSetTime);
+            }
+
             latch.countDown();
         }
     }
