@@ -405,6 +405,7 @@ public class GrizzlyClientSocket {
                 closeTransport(privateTransport);
 
                 if (ioException != null) {
+                    clientEngine.processError(ioException);
                     throw ioException;
                 }
             }

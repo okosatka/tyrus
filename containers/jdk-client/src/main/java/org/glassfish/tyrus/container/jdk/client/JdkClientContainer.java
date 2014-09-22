@@ -176,6 +176,7 @@ public class JdkClientContainer implements ClientContainer {
                             return null;
                         } catch (Throwable t) {
                             LOGGER.log(Level.FINE, "Connecting to " + proxyAddress + " failed", t);
+                            clientEngine.processError(t);
                             clientFilter.close();
                         }
                     }
